@@ -1,7 +1,7 @@
 /** @file
 
   Copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
-  Portions Copyright (c) 2011 - 2014, ARM Ltd. All rights reserved.<BR>
+  Portions Copyright (c) 2011 - 2021, Arm Limited. All rights reserved.<BR>
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
@@ -13,48 +13,11 @@
 
 EFI_STATUS
 InitializeExceptions (
-  IN EFI_CPU_ARCH_PROTOCOL    *Cpu
-  ) {
-  EFI_STATUS                      Status;
-  EFI_VECTOR_HANDOFF_INFO         *VectorInfoList;
-  EFI_VECTOR_HANDOFF_INFO         *VectorInfo;
-  BOOLEAN                         IrqEnabled;
-  BOOLEAN                         FiqEnabled;
-
-  VectorInfo = (EFI_VECTOR_HANDOFF_INFO *)NULL;
-  Status = EfiGetSystemConfigurationTable(&gEfiVectorHandoffTableGuid, (VOID **)&VectorInfoList);
-  if (Status == EFI_SUCCESS && VectorInfoList != NULL) {
-    VectorInfo = VectorInfoList;
-  }
-
+  VOID
+  )
+{
   // initialize the CpuExceptionHandlerLib so we take over the exception vector table from the DXE Core
-  InitializeCpuExceptionHandlers(VectorInfo);
-
-  Status = EFI_SUCCESS;
-
-  //
-  // Disable interrupts
-  //
-  Cpu->GetInterruptState (Cpu, &IrqEnabled);
-  Cpu->DisableInterrupt (Cpu);
-
-  //
-  // EFI does not use the FIQ, but a debugger might so we must disable
-  // as we take over the exception vectors.
-  //
-  FiqEnabled = ArmGetFiqState ();
-  ArmDisableFiq ();
-
-  if (FiqEnabled) {
-    ArmEnableFiq ();
-  }
-
-  if (IrqEnabled) {
-    //
-    // Restore interrupt state
-    //
-    Status = Cpu->EnableInterrupt (Cpu);
-  }
+  InitializeCpuExceptionHandlers (NULL);
 
   //
   // On a DEBUG build, unmask SErrors so they are delivered right away rather
@@ -63,9 +26,9 @@ InitializeExceptions (
   //
   DEBUG_CODE (
     ArmEnableAsynchronousAbort ();
-  );
+    );
 
-  return Status;
+  return EFI_SUCCESS;
 }
 
 /**
@@ -89,10 +52,11 @@ previously installed.
 
 **/
 EFI_STATUS
-RegisterInterruptHandler(
-  IN EFI_EXCEPTION_TYPE             InterruptType,
-  IN EFI_CPU_INTERRUPT_HANDLER      InterruptHandler
-  ) {
+RegisterInterruptHandler (
+  IN EFI_EXCEPTION_TYPE         InterruptType,
+  IN EFI_CPU_INTERRUPT_HANDLER  InterruptHandler
+  )
+{
   // pass down to CpuExceptionHandlerLib
-  return (EFI_STATUS)RegisterCpuInterruptHandler(InterruptType, InterruptHandler);
+  return (EFI_STATUS)RegisterCpuInterruptHandler (InterruptType, InterruptHandler);
 }

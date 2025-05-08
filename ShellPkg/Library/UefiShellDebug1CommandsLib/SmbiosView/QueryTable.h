@@ -2,7 +2,7 @@
   Build a table, each item is (key, info) pair.
   and give a interface of query a string out of a table.
 
-  Copyright (c) 2005 - 2018, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2005 - 2019, Intel Corporation. All rights reserved.<BR>
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
@@ -10,11 +10,13 @@
 #ifndef _SMBIOS_QUERY_TABLE_H_
 #define _SMBIOS_QUERY_TABLE_H_
 
-#define QUERY_TABLE_UNFOUND 0xFF
+#include <IndustryStandard/SmBios.h>
+
+#define QUERY_TABLE_UNFOUND  0xFF
 
 typedef struct TABLE_ITEM {
-  UINT16  Key;
-  CHAR16  *Info;
+  UINT16    Key;
+  CHAR16    *Info;
 } TABLE_ITEM;
 
 //
@@ -57,11 +59,11 @@ typedef struct TABLE_ITEM {
 **/
 UINT8
 QueryTable (
-  IN  TABLE_ITEM    *Table,
-  IN  UINTN         Number,
-  IN  UINT8         Key,
-  IN  OUT CHAR16    *Info,
-  IN  UINTN         InfoLen
+  IN  TABLE_ITEM  *Table,
+  IN  UINTN       Number,
+  IN  UINT8       Key,
+  IN  OUT CHAR16  *Info,
+  IN  UINTN       InfoLen
   );
 
 /**
@@ -72,8 +74,8 @@ QueryTable (
 **/
 VOID
 DisplayStructureTypeInfo (
-  IN UINT8 Key,
-  IN UINT8 Option
+  IN UINT8  Key,
+  IN UINT8  Option
   );
 
 /**
@@ -84,8 +86,8 @@ DisplayStructureTypeInfo (
 **/
 VOID
 DisplaySystemWakeupType (
-  IN UINT8 Type,
-  IN UINT8 Option
+  IN UINT8  Type,
+  IN UINT8  Option
   );
 
 /**
@@ -96,8 +98,8 @@ DisplaySystemWakeupType (
 **/
 VOID
 DisplayBaseBoardFeatureFlags (
-  IN UINT8 FeatureFlags,
-  IN UINT8 Option
+  IN UINT8  FeatureFlags,
+  IN UINT8  Option
   );
 
 /**
@@ -107,9 +109,9 @@ DisplayBaseBoardFeatureFlags (
   @param[in] Option         The optional information.
 **/
 VOID
-DisplayBaseBoardBoardType(
-  IN UINT8 Type,
-  IN UINT8 Option
+DisplayBaseBoardBoardType (
+  IN UINT8  Type,
+  IN UINT8  Option
   );
 
 /**
@@ -120,8 +122,8 @@ DisplayBaseBoardBoardType(
 **/
 VOID
 DisplaySystemEnclosureType (
-  IN UINT8 Type,
-  IN UINT8 Option
+  IN UINT8  Type,
+  IN UINT8  Option
   );
 
 /**
@@ -132,8 +134,8 @@ DisplaySystemEnclosureType (
 **/
 VOID
 DisplaySystemEnclosureStatus (
-  IN UINT8 Status,
-  IN UINT8 Option
+  IN UINT8  Status,
+  IN UINT8  Option
   );
 
 /**
@@ -144,8 +146,8 @@ DisplaySystemEnclosureStatus (
 **/
 VOID
 DisplaySESecurityStatus (
-  IN UINT8 Status,
-  IN UINT8 Option
+  IN UINT8  Status,
+  IN UINT8  Option
   )
 ;
 
@@ -157,8 +159,8 @@ DisplaySESecurityStatus (
 **/
 VOID
 DisplayProcessorType (
-  IN UINT8 Type,
-  IN UINT8 Option
+  IN UINT8  Type,
+  IN UINT8  Option
   );
 
 /**
@@ -169,8 +171,8 @@ DisplayProcessorType (
 **/
 VOID
 DisplayProcessorUpgrade (
-  IN UINT8 Upgrade,
-  IN UINT8 Option
+  IN UINT8  Upgrade,
+  IN UINT8  Option
   );
 
 /**
@@ -181,8 +183,8 @@ DisplayProcessorUpgrade (
 **/
 VOID
 DisplayProcessorCharacteristics (
-  IN UINT16 Type,
-  IN UINT8 Option
+  IN UINT16  Type,
+  IN UINT8   Option
   );
 
 /**
@@ -193,8 +195,8 @@ DisplayProcessorCharacteristics (
 **/
 VOID
 DisplayMcErrorDetectMethod (
-  IN UINT8 Method,
-  IN UINT8 Option
+  IN UINT8  Method,
+  IN UINT8  Option
   );
 
 /**
@@ -205,8 +207,8 @@ DisplayMcErrorDetectMethod (
 **/
 VOID
 DisplayMcErrorCorrectCapability (
-  IN UINT8 Capability,
-  IN UINT8 Option
+  IN UINT8  Capability,
+  IN UINT8  Option
   );
 
 /**
@@ -217,8 +219,8 @@ DisplayMcErrorCorrectCapability (
 **/
 VOID
 DisplayMcInterleaveSupport (
-  IN UINT8 Support,
-  IN UINT8 Option
+  IN UINT8  Support,
+  IN UINT8  Option
   );
 
 /**
@@ -241,8 +243,8 @@ DisplayMcMemorySpeeds (
 **/
 VOID
 DisplayMemoryModuleVoltage (
-  IN UINT8 Voltage,
-  IN UINT8 Option
+  IN UINT8  Voltage,
+  IN UINT8  Option
   );
 
 /**
@@ -265,8 +267,8 @@ DisplayMmMemoryType (
 **/
 VOID
 DisplayMmErrorStatus (
-  IN UINT8 Status,
-  IN UINT8 Option
+  IN UINT8  Status,
+  IN UINT8  Option
   );
 
 /**
@@ -289,8 +291,8 @@ DisplayCacheSRAMType (
 **/
 VOID
 DisplayCacheErrCorrectingType (
-  IN UINT8 Type,
-  IN UINT8 Option
+  IN UINT8  Type,
+  IN UINT8  Option
   );
 
 /**
@@ -301,8 +303,8 @@ DisplayCacheErrCorrectingType (
 **/
 VOID
 DisplayCacheSystemCacheType (
-  IN UINT8 Type,
-  IN UINT8 Option
+  IN UINT8  Type,
+  IN UINT8  Option
   );
 
 /**
@@ -313,8 +315,8 @@ DisplayCacheSystemCacheType (
 **/
 VOID
 DisplayCacheAssociativity (
-  IN UINT8 Associativity,
-  IN UINT8 Option
+  IN UINT8  Associativity,
+  IN UINT8  Option
   );
 
 /**
@@ -325,8 +327,8 @@ DisplayCacheAssociativity (
 **/
 VOID
 DisplayPortConnectorType (
-  IN UINT8 Type,
-  IN UINT8 Option
+  IN UINT8  Type,
+  IN UINT8  Option
   );
 
 /**
@@ -337,8 +339,8 @@ DisplayPortConnectorType (
 **/
 VOID
 DisplayPortType (
-  IN UINT8 Type,
-  IN UINT8 Option
+  IN UINT8  Type,
+  IN UINT8  Option
   );
 
 /**
@@ -349,8 +351,8 @@ DisplayPortType (
 **/
 VOID
 DisplaySystemSlotType (
-  IN UINT8 Type,
-  IN UINT8 Option
+  IN UINT8  Type,
+  IN UINT8  Option
   );
 
 /**
@@ -361,8 +363,8 @@ DisplaySystemSlotType (
 **/
 VOID
 DisplaySystemSlotDataBusWidth (
-  IN UINT8 Width,
-  IN UINT8 Option
+  IN UINT8  Width,
+  IN UINT8  Option
   );
 
 /**
@@ -373,8 +375,8 @@ DisplaySystemSlotDataBusWidth (
 **/
 VOID
 DisplaySystemSlotCurrentUsage (
-  IN UINT8 Usage,
-  IN UINT8 Option
+  IN UINT8  Usage,
+  IN UINT8  Option
   );
 
 /**
@@ -385,8 +387,8 @@ DisplaySystemSlotCurrentUsage (
 **/
 VOID
 DisplaySystemSlotLength (
-  IN UINT8 Length,
-  IN UINT8 Option
+  IN UINT8  Length,
+  IN UINT8  Option
   );
 
 /**
@@ -397,8 +399,8 @@ DisplaySystemSlotLength (
 **/
 VOID
 DisplaySlotCharacteristics1 (
-  IN UINT8 Chara1,
-  IN UINT8 Option
+  IN UINT8  Chara1,
+  IN UINT8  Option
   );
 
 /**
@@ -409,8 +411,44 @@ DisplaySlotCharacteristics1 (
 **/
 VOID
 DisplaySlotCharacteristics2 (
-  IN UINT8 Chara2,
-  IN UINT8 Option
+  IN UINT8  Chara2,
+  IN UINT8  Option
+  );
+
+/**
+  Display System Slots (Type 9) Information.
+
+  @param[in] Width      The key of the structure.
+  @param[in] Option     The optional information.
+**/
+VOID
+DisplaySystemSlotInformation (
+  IN UINT8  Width,
+  IN UINT8  Option
+  );
+
+/**
+  Display System Slots (Type 9) Physical Width.
+
+  @param[in] Width      The key of the structure.
+  @param[in] Option     The optional information.
+**/
+VOID
+DisplaySystemSlotPhysicalWidth (
+  IN UINT8  Width,
+  IN UINT8  Option
+  );
+
+/**
+  Display System Slots (Type 9) slot height.
+
+  @param[in] Length     The key of the structure.
+  @param[in] Option     The optional information.
+**/
+VOID
+DisplaySystemSlotHeight (
+  IN UINT8  Length,
+  IN UINT8  Option
   );
 
 /**
@@ -421,8 +459,8 @@ DisplaySlotCharacteristics2 (
 **/
 VOID
 DisplayOnboardDeviceTypes (
-  IN UINT8 Type,
-  IN UINT8 Option
+  IN UINT8  Type,
+  IN UINT8  Option
   );
 
 /**
@@ -433,8 +471,8 @@ DisplayOnboardDeviceTypes (
 **/
 VOID
 DisplaySELTypes (
-  IN UINT8 Type,
-  IN UINT8 Option
+  IN UINT8  Type,
+  IN UINT8  Option
   );
 
 /**
@@ -445,8 +483,8 @@ DisplaySELTypes (
 **/
 VOID
 DisplaySELVarDataFormatType (
-  IN UINT8 Type,
-  IN UINT8 Option
+  IN UINT8  Type,
+  IN UINT8  Option
   );
 
 /**
@@ -493,8 +531,8 @@ DisplaySELSysManagementTypes (
 **/
 VOID
 DisplayPMALocation (
-  IN UINT8 Location,
-  IN UINT8 Option
+  IN UINT8  Location,
+  IN UINT8  Option
   );
 
 /**
@@ -505,8 +543,8 @@ DisplayPMALocation (
 **/
 VOID
 DisplayPMAUse (
-  IN UINT8 Use,
-  IN UINT8 Option
+  IN UINT8  Use,
+  IN UINT8  Option
   );
 
 /**
@@ -517,8 +555,8 @@ DisplayPMAUse (
 **/
 VOID
 DisplayPMAErrorCorrectionTypes (
-  IN UINT8 Type,
-  IN UINT8 Option
+  IN UINT8  Type,
+  IN UINT8  Option
   );
 
 /**
@@ -529,8 +567,8 @@ DisplayPMAErrorCorrectionTypes (
 **/
 VOID
 DisplayMemoryDeviceFormFactor (
-  IN UINT8 FormFactor,
-  IN UINT8 Option
+  IN UINT8  FormFactor,
+  IN UINT8  Option
   );
 
 /**
@@ -541,8 +579,8 @@ DisplayMemoryDeviceFormFactor (
 **/
 VOID
 DisplayMemoryDeviceType (
-  IN UINT8 Type,
-  IN UINT8 Option
+  IN UINT8  Type,
+  IN UINT8  Option
   );
 
 /**
@@ -589,8 +627,8 @@ DisplayMemoryDeviceMemoryOperatingModeCapability (
 **/
 VOID
 DisplayMemoryErrorType (
-  IN UINT8 ErrorType,
-  IN UINT8 Option
+  IN UINT8  ErrorType,
+  IN UINT8  Option
   );
 
 /**
@@ -601,8 +639,8 @@ DisplayMemoryErrorType (
 **/
 VOID
 DisplayMemoryErrorGranularity (
-  IN UINT8 Granularity,
-  IN UINT8 Option
+  IN UINT8  Granularity,
+  IN UINT8  Option
   );
 
 /**
@@ -613,8 +651,8 @@ DisplayMemoryErrorGranularity (
 **/
 VOID
 DisplayMemoryErrorOperation (
-  IN UINT8 Operation,
-  IN UINT8 Option
+  IN UINT8  Operation,
+  IN UINT8  Option
   );
 
 /**
@@ -625,8 +663,8 @@ DisplayMemoryErrorOperation (
 **/
 VOID
 DisplayPointingDeviceType (
-  IN UINT8 Type,
-  IN UINT8 Option
+  IN UINT8  Type,
+  IN UINT8  Option
   );
 
 /**
@@ -637,8 +675,8 @@ DisplayPointingDeviceType (
 **/
 VOID
 DisplayPointingDeviceInterface (
-  IN UINT8   Interface,
-  IN UINT8   Option
+  IN UINT8  Interface,
+  IN UINT8  Option
   );
 
 /**
@@ -649,8 +687,8 @@ DisplayPointingDeviceInterface (
 **/
 VOID
 DisplayPBDeviceChemistry (
-  IN UINT8 Key,
-  IN UINT8 Option
+  IN UINT8  Key,
+  IN UINT8  Option
   );
 
 /**
@@ -661,8 +699,8 @@ DisplayPBDeviceChemistry (
 **/
 VOID
 DisplayVPLocation (
-  IN UINT8 Key,
-  IN UINT8 Option
+  IN UINT8  Key,
+  IN UINT8  Option
   );
 
 /**
@@ -673,8 +711,8 @@ DisplayVPLocation (
 **/
 VOID
 DisplayVPStatus (
-  IN UINT8 Key,
-  IN UINT8 Option
+  IN UINT8  Key,
+  IN UINT8  Option
   );
 
 /**
@@ -685,8 +723,8 @@ DisplayVPStatus (
 **/
 VOID
 DisplayCoolingDeviceStatus (
-  IN UINT8 Key,
-  IN UINT8 Option
+  IN UINT8  Key,
+  IN UINT8  Option
   );
 
 /**
@@ -697,8 +735,8 @@ DisplayCoolingDeviceStatus (
 **/
 VOID
 DisplayCoolingDeviceType (
-  IN UINT8 Key,
-  IN UINT8 Option
+  IN UINT8  Key,
+  IN UINT8  Option
   );
 
 /**
@@ -709,8 +747,8 @@ DisplayCoolingDeviceType (
 **/
 VOID
 DisplayTemperatureProbeStatus (
-  IN UINT8 Key,
-  IN UINT8 Option
+  IN UINT8  Key,
+  IN UINT8  Option
   );
 
 /**
@@ -721,8 +759,8 @@ DisplayTemperatureProbeStatus (
 **/
 VOID
 DisplayTemperatureProbeLoc (
-  IN UINT8 Key,
-  IN UINT8 Option
+  IN UINT8  Key,
+  IN UINT8  Option
   );
 
 /**
@@ -733,8 +771,8 @@ DisplayTemperatureProbeLoc (
 **/
 VOID
 DisplayECPStatus (
-  IN UINT8 Key,
-  IN UINT8 Option
+  IN UINT8  Key,
+  IN UINT8  Option
   );
 
 /**
@@ -745,8 +783,8 @@ DisplayECPStatus (
 **/
 VOID
 DisplayECPLoc (
-  IN UINT8 Key,
-  IN UINT8 Option
+  IN UINT8  Key,
+  IN UINT8  Option
   );
 
 /**
@@ -757,8 +795,8 @@ DisplayECPLoc (
 **/
 VOID
 DisplayMDType (
-  IN UINT8 Key,
-  IN UINT8 Option
+  IN UINT8  Key,
+  IN UINT8  Option
   );
 
 /**
@@ -769,8 +807,8 @@ DisplayMDType (
 **/
 VOID
 DisplayMDAddressType (
-  IN UINT8 Key,
-  IN UINT8 Option
+  IN UINT8  Key,
+  IN UINT8  Option
   );
 
 /**
@@ -781,8 +819,8 @@ DisplayMDAddressType (
 **/
 VOID
 DisplayMemoryChannelType (
-  IN UINT8 Key,
-  IN UINT8 Option
+  IN UINT8  Key,
+  IN UINT8  Option
   );
 
 /**
@@ -793,8 +831,8 @@ DisplayMemoryChannelType (
 **/
 VOID
 DisplayIPMIDIBMCInterfaceType (
-  IN UINT8 Key,
-  IN UINT8 Option
+  IN UINT8  Key,
+  IN UINT8  Option
   );
 
 /**
@@ -805,8 +843,8 @@ DisplayIPMIDIBMCInterfaceType (
 **/
 VOID
 DisplayMCHostInterfaceType (
-  IN UINT8 Key,
-  IN UINT8 Option
+  IN UINT8  Key,
+  IN UINT8  Option
   );
 
 #endif

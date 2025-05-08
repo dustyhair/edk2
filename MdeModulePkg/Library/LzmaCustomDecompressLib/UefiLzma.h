@@ -15,27 +15,22 @@
 #include <Library/BaseMemoryLib.h>
 
 #ifdef _WIN32
-#undef _WIN32
+  #undef _WIN32
 #endif
 
-#ifndef _SIZE_T_DEFINED
-#if !defined(_WIN64) || defined(__GNUC__)
-typedef unsigned int size_t;
-#endif
-#endif
+typedef UINTN size_t;
 
 #ifdef _WIN64
-#undef _WIN64
+  #undef _WIN64
 #endif
 
 #ifndef _PTRDIFF_T_DEFINED
 typedef int ptrdiff_t;
 #endif
 
-#define memcpy CopyMem
-#define memmove CopyMem
+#define memcpy   CopyMem
+#define memmove  CopyMem
 
 #define _LZMA_SIZE_OPT
 
 #endif // __UEFILZMA_H__
-

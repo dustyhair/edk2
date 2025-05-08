@@ -6,42 +6,23 @@
 //
 //
 
-#include <AsmMacroIoLibV8.h>
+#include <AsmMacroLib.h>
 
 ASM_FUNC(_ModuleEntryPoint)
   //
-  // We are built as a ET_DYN PIE executable, so we need to process all
-  // relative relocations regardless of whether or not we are executing from
-  // the same offset we were linked at. This is only possible if we are
-  // running from RAM.
+  // If we are booting from RAM using the Linux kernel boot protocol, x0 will
+  // point to the DTB image in memory. Otherwise, use the default value defined
+  // by the platform.
   //
-  adr   x8, __reloc_base
-  adr   x9, __reloc_start
-  adr   x10, __reloc_end
+  cbnz  x0, 0f
+  ldr   x0, PcdGet64 (PcdDeviceTreeInitialBaseAddress)
 
-.Lreloc_loop:
-  cmp   x9, x10
-  bhs   .Lreloc_done
+0:mov   x28, x0             // preserve DTB pointer
+  mov   x27, x1             // preserve base of image pointer
 
-  //
-  // AArch64 uses the ELF64 RELA format, which means each entry in the
-  // relocation table consists of
-  //
-  //   UINT64 offset          : the relative offset of the value that needs to
-  //                            be relocated
-  //   UINT64 info            : relocation type and symbol index (the latter is
-  //                            not used for R_AARCH64_RELATIVE relocations)
-  //   UINT64 addend          : value to be added to the value being relocated
-  //
-  ldp   x11, x12, [x9], #24   // read offset into x11 and info into x12
-  cmp   x12, #0x403           // check info == R_AARCH64_RELATIVE?
-  bne   .Lreloc_loop          // not a relative relocation? then skip
-
-  ldr   x12, [x9, #-8]        // read addend into x12
-  add   x12, x12, x8          // add reloc base to addend to get relocated value
-  str   x12, [x11, x8]        // write relocated value at offset
-  b     .Lreloc_loop
-.Lreloc_done:
+  // Enable Floating Point. This needs to be done before entering C code, which
+  // may use FP/SIMD registers.
+  bl    ArmEnableVFP
 
   bl    ASM_PFX(DiscoverDramFromDt)
 
@@ -129,28 +110,18 @@ _NeverReturn:
 
 // VOID
 // DiscoverDramFromDt (
-//   VOID   *DeviceTreeBaseAddress,   // passed by loader in x0
-//   VOID   *ImageBase                // passed by FDF trampoline in x1
+//   VOID   *DeviceTreeBaseAddress,   // passed by loader in x0, preserved in x28
+//   VOID   *ImageBase                // passed by FDF trampoline in x1, preserved in x27
 //   );
 ASM_PFX(DiscoverDramFromDt):
-  //
-  // If we are booting from RAM using the Linux kernel boot protocol, x0 will
-  // point to the DTB image in memory. Otherwise, use the default value defined
-  // by the platform.
-  //
-  cbnz  x0, 0f
-  ldr   x0, PcdGet64 (PcdDeviceTreeInitialBaseAddress)
-
-0:mov   x29, x30            // preserve LR
-  mov   x28, x0             // preserve DTB pointer
-  mov   x27, x1             // preserve base of image pointer
+  mov   x29, x30            // preserve LR
 
   //
-  // The base of the runtime image has been preserved in x1. Check whether
+  // The base of the runtime image has been preserved in x27. Check whether
   // the expected magic number can be found in the header.
   //
   ldr   w8, .LArm64LinuxMagic
-  ldr   w9, [x1, #0x38]
+  ldr   w9, [x27, #0x38]
   cmp   w8, w9
   bne   .Lout
 
@@ -166,19 +137,28 @@ ASM_PFX(DiscoverDramFromDt):
   ldr   x6, [x8]
   ldr   x7, [x9]
   sub   x7, x7, x6
-  add   x7, x7, x1
-  str   x1, [x8]
+  add   x7, x7, x27
+  str   x27, [x8]
   str   x7, [x9]
+
+  //
+  // The runtime address may be different from the link time address so fix
+  // up the PE/COFF relocations. Since we are calling a C function, use the
+  // window at the beginning of the FD image as a temp stack.
+  //
+  mov   x0, x7
+  adr   x1, PeCoffLoaderImageReadFromMemory
+  mov   sp, x7
+  bl    RelocatePeCoffImage
 
   //
   // Discover the memory size and offset from the DTB, and record in the
   // respective PCDs. This will also return false if a corrupt DTB is
-  // encountered. Since we are calling a C function, use the window at the
-  // beginning of the FD image as a temp stack.
+  // encountered.
   //
+  mov   x0, x28
   adr   x1, PcdGet64 (PcdSystemMemoryBase)
   adr   x2, PcdGet64 (PcdSystemMemorySize)
-  mov   sp, x7
   bl    FindMemnode
   cbz   x0, .Lout
 

@@ -1,17 +1,18 @@
 /** @file
 Elf32 Convert solution
 
-Copyright (c) 2010 - 2018, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2010 - 2021, Intel Corporation. All rights reserved.<BR>
 Portions copyright (c) 2013, ARM Ltd. All rights reserved.<BR>
+Portions Copyright (c) 2020, Hewlett Packard Enterprise Development LP. All rights reserved.<BR>
 
 SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#include "WinNtInclude.h"
-
 #ifndef __GNUC__
+#define RUNTIME_FUNCTION  _WINNT_DUP_RUNTIME_FUNCTION
 #include <windows.h>
+#undef RUNTIME_FUNCTION
 #include <io.h>
 #endif
 #include <assert.h>
@@ -141,9 +142,8 @@ InitializeElf32 (
     Error (NULL, 0, 3000, "Unsupported", "ELF e_type not ET_EXEC or ET_DYN");
     return FALSE;
   }
-  if (!((mEhdr->e_machine == EM_386) || (mEhdr->e_machine == EM_ARM))) {
-    Error (NULL, 0, 3000, "Unsupported", "ELF e_machine not EM_386 or EM_ARM");
-    return FALSE;
+  if (!((mEhdr->e_machine == EM_386) || (mEhdr->e_machine == EM_ARM) || (mEhdr->e_machine == EM_RISCV))) {
+    Warning (NULL, 0, 3000, "Unsupported", "ELF e_machine is not Elf32 machine.");
   }
   if (mEhdr->e_version != EV_CURRENT) {
     Error (NULL, 0, 3000, "Unsupported", "ELF e_version (%u) not EV_CURRENT (%d)", (unsigned) mEhdr->e_version, EV_CURRENT);
@@ -238,7 +238,8 @@ IsTextShdr (
   Elf_Shdr *Shdr
   )
 {
-  return (BOOLEAN) ((Shdr->sh_flags & (SHF_WRITE | SHF_ALLOC)) == SHF_ALLOC);
+  return (BOOLEAN) (((Shdr->sh_flags & (SHF_EXECINSTR | SHF_ALLOC)) == (SHF_EXECINSTR | SHF_ALLOC)) ||
+                   ((Shdr->sh_flags & (SHF_WRITE | SHF_ALLOC)) == SHF_ALLOC));
 }
 
 STATIC
@@ -261,7 +262,7 @@ IsDataShdr (
   if (IsHiiRsrcShdr(Shdr)) {
     return FALSE;
   }
-  return (BOOLEAN) (Shdr->sh_flags & (SHF_WRITE | SHF_ALLOC)) == (SHF_ALLOC | SHF_WRITE);
+  return (BOOLEAN) (Shdr->sh_flags & (SHF_EXECINSTR | SHF_WRITE | SHF_ALLOC)) == (SHF_ALLOC | SHF_WRITE);
 }
 
 STATIC
@@ -355,7 +356,7 @@ ScanSections32 (
     mCoffOffset += sizeof (EFI_IMAGE_NT_HEADERS32);
   break;
   default:
-    VerboseMsg ("%s unknown e_machine type. Assume IA-32", (UINTN)mEhdr->e_machine);
+    VerboseMsg ("%u unknown e_machine type. Assume IA-32", (UINTN)mEhdr->e_machine);
     mCoffOffset += sizeof (EFI_IMAGE_NT_HEADERS32);
   break;
   }
@@ -435,7 +436,7 @@ ScanSections32 (
     }
   }
 
-  if (!FoundSection) {
+  if (!FoundSection && mOutImageType != FW_ACPI_IMAGE) {
     Error (NULL, 0, 3000, "Invalid", "Did not find any '.text' section.");
     assert (FALSE);
   }
@@ -554,16 +555,16 @@ ScanSections32 (
 
   switch (mEhdr->e_machine) {
   case EM_386:
-    NtHdr->Pe32.FileHeader.Machine = EFI_IMAGE_MACHINE_IA32;
+    NtHdr->Pe32.FileHeader.Machine = IMAGE_FILE_MACHINE_I386;
     NtHdr->Pe32.OptionalHeader.Magic = EFI_IMAGE_NT_OPTIONAL_HDR32_MAGIC;
     break;
   case EM_ARM:
-    NtHdr->Pe32.FileHeader.Machine = EFI_IMAGE_MACHINE_ARMT;
+    NtHdr->Pe32.FileHeader.Machine = IMAGE_FILE_MACHINE_ARMTHUMB_MIXED;
     NtHdr->Pe32.OptionalHeader.Magic = EFI_IMAGE_NT_OPTIONAL_HDR32_MAGIC;
     break;
   default:
     VerboseMsg ("%s unknown e_machine type %hu. Assume IA-32", mInImageName, mEhdr->e_machine);
-    NtHdr->Pe32.FileHeader.Machine = EFI_IMAGE_MACHINE_IA32;
+    NtHdr->Pe32.FileHeader.Machine = IMAGE_FILE_MACHINE_I386;
     NtHdr->Pe32.OptionalHeader.Magic = EFI_IMAGE_NT_OPTIONAL_HDR32_MAGIC;
   }
 
@@ -749,13 +750,7 @@ WriteSections32 (
           if (SymName == NULL) {
             SymName = (const UINT8 *)"<unknown>";
           }
-
-          Error (NULL, 0, 3000, "Invalid",
-                 "%s: Bad definition for symbol '%s'@%#x or unsupported symbol type.  "
-                 "For example, absolute and undefined symbols are not supported.",
-                 mInImageName, SymName, Sym->st_value);
-
-          exit(EXIT_FAILURE);
+          continue;
         }
         SymShdr = GetShdrByIndex(Sym->st_shndx);
 

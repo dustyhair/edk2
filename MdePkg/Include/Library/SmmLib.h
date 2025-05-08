@@ -11,7 +11,6 @@
 #ifndef __SMM_LIB_H__
 #define __SMM_LIB_H__
 
-
 /**
   Triggers an SMI at boot time.
 
@@ -23,7 +22,6 @@ EFIAPI
 TriggerBootServiceSoftwareSmi (
   VOID
   );
-
 
 /**
   Triggers an SMI at run time.
@@ -37,7 +35,6 @@ TriggerRuntimeSoftwareSmi (
   VOID
   );
 
-
 /**
   Test if a boot time software SMI happened.
 
@@ -45,7 +42,7 @@ TriggerRuntimeSoftwareSmi (
   it was triggered at boot time, it returns TRUE. Otherwise, it returns FALSE.
 
   @retval TRUE   A software SMI triggered at boot time happened.
-  @retval FLASE  No software SMI happened, or the software SMI was triggered at run time.
+  @retval FALSE  No software SMI happened, or the software SMI was triggered at run time.
 
 **/
 BOOLEAN
@@ -54,7 +51,6 @@ IsBootServiceSoftwareSmi (
   VOID
   );
 
-
 /**
   Test if a run time software SMI happened.
 
@@ -62,7 +58,7 @@ IsBootServiceSoftwareSmi (
   it was triggered at run time, it returns TRUE. Otherwise, it returns FALSE.
 
   @retval TRUE   A software SMI triggered at run time happened.
-  @retval FLASE  No software SMI happened or the software SMI was triggered at boot time.
+  @retval FALSE  No software SMI happened or the software SMI was triggered at boot time.
 
 **/
 BOOLEAN
@@ -80,4 +76,5 @@ EFIAPI
 ClearSmi (
   VOID
   );
+
 #endif

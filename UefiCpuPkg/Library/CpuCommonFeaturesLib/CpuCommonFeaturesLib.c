@@ -2,7 +2,7 @@
   This library registers CPU features defined in Intel(R) 64 and IA-32
   Architectures Software Developer's Manual.
 
-  Copyright (c) 2017 - 2019, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2017 - 2020, Intel Corporation. All rights reserved.<BR>
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
@@ -20,7 +20,7 @@ CpuCommonFeaturesLibConstructor (
   VOID
   )
 {
-  RETURN_STATUS         Status;
+  RETURN_STATUS  Status;
 
   if (IsCpuFeatureSupported (CPU_FEATURE_AESNI)) {
     Status = RegisterCpuFeature (
@@ -33,6 +33,7 @@ CpuCommonFeaturesLibConstructor (
                );
     ASSERT_EFI_ERROR (Status);
   }
+
   if (IsCpuFeatureSupported (CPU_FEATURE_MWAIT)) {
     Status = RegisterCpuFeature (
                "MWAIT",
@@ -44,6 +45,7 @@ CpuCommonFeaturesLibConstructor (
                );
     ASSERT_EFI_ERROR (Status);
   }
+
   if (IsCpuFeatureSupported (CPU_FEATURE_ACPI)) {
     Status = RegisterCpuFeature (
                "ACPI",
@@ -55,6 +57,7 @@ CpuCommonFeaturesLibConstructor (
                );
     ASSERT_EFI_ERROR (Status);
   }
+
   if (IsCpuFeatureSupported (CPU_FEATURE_EIST)) {
     Status = RegisterCpuFeature (
                "EIST",
@@ -66,17 +69,7 @@ CpuCommonFeaturesLibConstructor (
                );
     ASSERT_EFI_ERROR (Status);
   }
-  if (IsCpuFeatureSupported (CPU_FEATURE_XD)) {
-    Status = RegisterCpuFeature (
-               "Execute Disable",
-               NULL,
-               ExecuteDisableSupport,
-               ExecuteDisableInitialize,
-               CPU_FEATURE_XD,
-               CPU_FEATURE_END
-               );
-    ASSERT_EFI_ERROR (Status);
-  }
+
   if (IsCpuFeatureSupported (CPU_FEATURE_FASTSTRINGS)) {
     Status = RegisterCpuFeature (
                "FastStrings",
@@ -88,6 +81,7 @@ CpuCommonFeaturesLibConstructor (
                );
     ASSERT_EFI_ERROR (Status);
   }
+
   if (IsCpuFeatureSupported (CPU_FEATURE_LOCK_FEATURE_CONTROL_REGISTER)) {
     Status = RegisterCpuFeature (
                "Lock Feature Control Register",
@@ -99,6 +93,7 @@ CpuCommonFeaturesLibConstructor (
                );
     ASSERT_EFI_ERROR (Status);
   }
+
   if (IsCpuFeatureSupported (CPU_FEATURE_SMX)) {
     Status = RegisterCpuFeature (
                "SMX",
@@ -106,11 +101,12 @@ CpuCommonFeaturesLibConstructor (
                SmxSupport,
                SmxInitialize,
                CPU_FEATURE_SMX,
-               CPU_FEATURE_LOCK_FEATURE_CONTROL_REGISTER | CPU_FEATURE_BEFORE,
+               CPU_FEATURE_LOCK_FEATURE_CONTROL_REGISTER | CPU_FEATURE_THREAD_BEFORE,
                CPU_FEATURE_END
                );
     ASSERT_EFI_ERROR (Status);
   }
+
   if (IsCpuFeatureSupported (CPU_FEATURE_VMX)) {
     Status = RegisterCpuFeature (
                "VMX",
@@ -118,11 +114,12 @@ CpuCommonFeaturesLibConstructor (
                VmxSupport,
                VmxInitialize,
                CPU_FEATURE_VMX,
-               CPU_FEATURE_LOCK_FEATURE_CONTROL_REGISTER | CPU_FEATURE_BEFORE,
+               CPU_FEATURE_LOCK_FEATURE_CONTROL_REGISTER | CPU_FEATURE_THREAD_BEFORE,
                CPU_FEATURE_END
                );
     ASSERT_EFI_ERROR (Status);
   }
+
   if (IsCpuFeatureSupported (CPU_FEATURE_LIMIT_CPUID_MAX_VAL)) {
     Status = RegisterCpuFeature (
                "Limit CpuId Maximum Value",
@@ -134,6 +131,7 @@ CpuCommonFeaturesLibConstructor (
                );
     ASSERT_EFI_ERROR (Status);
   }
+
   if (IsCpuFeatureSupported (CPU_FEATURE_MCE)) {
     Status = RegisterCpuFeature (
                "Machine Check Enable",
@@ -145,6 +143,7 @@ CpuCommonFeaturesLibConstructor (
                );
     ASSERT_EFI_ERROR (Status);
   }
+
   if (IsCpuFeatureSupported (CPU_FEATURE_MCA)) {
     Status = RegisterCpuFeature (
                "Machine Check Architect",
@@ -156,6 +155,7 @@ CpuCommonFeaturesLibConstructor (
                );
     ASSERT_EFI_ERROR (Status);
   }
+
   if (IsCpuFeatureSupported (CPU_FEATURE_MCG_CTL)) {
     Status = RegisterCpuFeature (
                "MCG_CTL",
@@ -167,6 +167,7 @@ CpuCommonFeaturesLibConstructor (
                );
     ASSERT_EFI_ERROR (Status);
   }
+
   if (IsCpuFeatureSupported (CPU_FEATURE_PENDING_BREAK)) {
     Status = RegisterCpuFeature (
                "Pending Break",
@@ -178,6 +179,7 @@ CpuCommonFeaturesLibConstructor (
                );
     ASSERT_EFI_ERROR (Status);
   }
+
   if (IsCpuFeatureSupported (CPU_FEATURE_C1E)) {
     Status = RegisterCpuFeature (
                "C1E",
@@ -189,6 +191,7 @@ CpuCommonFeaturesLibConstructor (
                );
     ASSERT_EFI_ERROR (Status);
   }
+
   if (IsCpuFeatureSupported (CPU_FEATURE_X2APIC)) {
     Status = RegisterCpuFeature (
                "X2Apic",
@@ -200,6 +203,7 @@ CpuCommonFeaturesLibConstructor (
                );
     ASSERT_EFI_ERROR (Status);
   }
+
   if (IsCpuFeatureSupported (CPU_FEATURE_PPIN)) {
     Status = RegisterCpuFeature (
                "PPIN",
@@ -211,6 +215,7 @@ CpuCommonFeaturesLibConstructor (
                );
     ASSERT_EFI_ERROR (Status);
   }
+
   if (IsCpuFeatureSupported (CPU_FEATURE_LMCE)) {
     Status = RegisterCpuFeature (
                "LMCE",
@@ -218,11 +223,12 @@ CpuCommonFeaturesLibConstructor (
                LmceSupport,
                LmceInitialize,
                CPU_FEATURE_LMCE,
-               CPU_FEATURE_LOCK_FEATURE_CONTROL_REGISTER | CPU_FEATURE_BEFORE,
+               CPU_FEATURE_LOCK_FEATURE_CONTROL_REGISTER | CPU_FEATURE_THREAD_BEFORE,
                CPU_FEATURE_END
                );
     ASSERT_EFI_ERROR (Status);
   }
+
   if (IsCpuFeatureSupported (CPU_FEATURE_PROC_TRACE)) {
     Status = RegisterCpuFeature (
                "Proc Trace",
@@ -237,6 +243,3 @@ CpuCommonFeaturesLibConstructor (
 
   return RETURN_SUCCESS;
 }
-
-
-

@@ -1,7 +1,7 @@
 /*++ @file
 Vfr Syntax
 
-Copyright (c) 2004 - 2019, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2004 - 2025, Intel Corporation. All rights reserved.<BR>
 SPDX-License-Identifier: BSD-2-Clause-Patent
 
 --*/
@@ -111,6 +111,7 @@ VfrParserStart (
 #token CloseBracket("]")                        "\]"
 
 #token LineDefinition                           "#line\ [0-9]+\ \"~[\"]+\"[\ \t]*\n" << gCVfrErrorHandle.ParseFileScopeRecord (begexpr (), line ()); skip (); newline (); >>
+#token GccLineDefinition                        "#\ [0-9]+\ \"~[\"]+\"[\ \t]*([1234][\ \t]*)*\n" << gCVfrErrorHandle.ParseFileScopeRecord (begexpr (), line ()); skip (); newline (); >>
 #token DevicePath("devicepath")                 "devicepath"
 #token FormSet("formset")                       "formset"
 #token FormSetId("formsetid")                   "formsetid"
@@ -192,6 +193,7 @@ VfrParserStart (
 #token LateCheckFlag("LATE_CHECK")              "LATE_CHECK"
 #token ReadOnlyFlag("READ_ONLY")                "READ_ONLY"
 #token OptionOnlyFlag("OPTIONS_ONLY")           "OPTIONS_ONLY"
+#token RestStyleFlag("REST_STYLE")              "REST_STYLE"
 #token Class("class")                           "class"
 #token Subclass("subclass")                     "subclass"
 #token ClassGuid("classguid")                   "classguid"
@@ -584,7 +586,7 @@ vfrFormSetDefinition :
   <<
      EFI_GUID    Guid;
      EFI_GUID    DefaultClassGuid = EFI_HII_PLATFORM_SETUP_FORMSET_GUID;
-     EFI_GUID    ClassGuid1, ClassGuid2, ClassGuid3;
+     EFI_GUID    ClassGuid1, ClassGuid2, ClassGuid3, ClassGuid4;
      UINT8       ClassGuidNum = 0;
      CIfrFormSet *FSObj = NULL;
      UINT16      C, SC;
@@ -600,13 +602,16 @@ vfrFormSetDefinition :
                      "\|" guidDefinition[ClassGuid2]  << ++ClassGuidNum; >>
                      {
                       "\|" guidDefinition[ClassGuid3]  << ++ClassGuidNum; >>
+                       {
+                         "\|" guidDefinition[ClassGuid4]  << ++ClassGuidNum; >>
+                       }
                      }
                   }
                   ","
   }
                                                     <<
-                                                      if (mOverrideClassGuid != NULL && ClassGuidNum >= 3) {
-                                                        _PCATCH (VFR_RETURN_INVALID_PARAMETER, L->getLine(), "Already has 3 class guids, can't add extra class guid!");
+                                                      if (mOverrideClassGuid != NULL && ClassGuidNum >= 4) {
+                                                        _PCATCH (VFR_RETURN_INVALID_PARAMETER, L->getLine(), "Already has 4 class guids, can't add extra class guid!");
                                                       }
                                                       switch (ClassGuidNum) {
                                                       case 0:
@@ -643,10 +648,23 @@ vfrFormSetDefinition :
                                                         }
                                                         break;
                                                       case 3:
+                                                        if (mOverrideClassGuid != NULL) {
+                                                          ClassGuidNum ++;
+                                                        }
                                                         FSObj = new CIfrFormSet(sizeof(EFI_IFR_FORM_SET) + ClassGuidNum * sizeof(EFI_GUID));
                                                         FSObj->SetClassGuid(&ClassGuid1);
                                                         FSObj->SetClassGuid(&ClassGuid2);
                                                         FSObj->SetClassGuid(&ClassGuid3);
+                                                        if (mOverrideClassGuid != NULL) {
+                                                          FSObj->SetClassGuid(mOverrideClassGuid);
+                                                        }
+                                                        break;
+                                                      case 4:
+                                                        FSObj = new CIfrFormSet(sizeof(EFI_IFR_FORM_SET) + ClassGuidNum * sizeof(EFI_GUID));
+                                                        FSObj->SetClassGuid(&ClassGuid1);
+                                                        FSObj->SetClassGuid(&ClassGuid2);
+                                                        FSObj->SetClassGuid(&ClassGuid3);
+                                                        FSObj->SetClassGuid(&ClassGuid4);
                                                         break;
                                                       default:
                                                         break;
@@ -1321,6 +1339,7 @@ questionheaderFlagsField[UINT8 & Flags] :
     ReadOnlyFlag                                    << $Flags |= 0x01; >>
   | InteractiveFlag                                 << $Flags |= 0x04; >>
   | ResetRequiredFlag                               << $Flags |= 0x10; >>
+  | RestStyleFlag                                   << $Flags |= 0x20; >>
   | ReconnectRequiredFlag                           << $Flags |= 0x40; >>
   | O:OptionOnlyFlag                                <<
                                                        gCVfrErrorHandle.HandleWarning (
@@ -2912,6 +2931,7 @@ vfrNumericFlags [CIfrNumeric & NObj, UINT32 LineNum] :
                                                             }
                                                             _PCATCH(NObj.SetFlags (HFlags, LFlags, IsDisplaySpecified), LineNum);
                                                           } else if ((_GET_CURRQEST_VARTINFO().mVarStoreId != EFI_VARSTORE_ID_INVALID) && (_GET_CURRQEST_VARTINFO().mIsBitVar)) {
+                                                            LFlags &= EDKII_IFR_DISPLAY_BIT;
                                                             LFlags |= (EDKII_IFR_NUMERIC_SIZE_BIT & (_GET_CURRQEST_VARSIZE()));
                                                             _PCATCH(NObj.SetFlagsForBitField (HFlags, LFlags, IsDisplaySpecified), LineNum);
                                                           }
@@ -3087,6 +3107,8 @@ vfrOneofFlagsField [CIfrOneOf & OObj, UINT32 LineNum] :
                                                             }
                                                             _PCATCH(OObj.SetFlags (HFlags, LFlags), LineNum);
                                                           } else if (_GET_CURRQEST_VARTINFO().mVarStoreId != EFI_VARSTORE_ID_INVALID) {
+                                                            LFlags &= EDKII_IFR_DISPLAY_BIT;
+                                                            LFlags |= (EDKII_IFR_NUMERIC_SIZE_BIT & (_GET_CURRQEST_VARSIZE()));
                                                             _PCATCH(OObj.SetFlagsForBitField (HFlags, LFlags), LineNum);
                                                           }
                                                        >>
@@ -3766,6 +3788,7 @@ oneofoptionFlagsField [UINT8 & HFlags, UINT8 & LFlags] :
   | "OPTION_DEFAULT_MFG"                               << $LFlags |= 0x20; >>
   | InteractiveFlag                                    << $HFlags |= 0x04; >>
   | ResetRequiredFlag                                  << $HFlags |= 0x10; >>
+  | RestStyleFlag                                      << $HFlags |= 0x20; >>
   | ReconnectRequiredFlag                              << $HFlags |= 0x40; >>
   | ManufacturingFlag                                  << $LFlags |= 0x20; >>
   | DefaultFlag                                        << $LFlags |= 0x10; >>

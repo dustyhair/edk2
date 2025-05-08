@@ -1,5 +1,6 @@
 ;------------------------------------------------------------------------------ ;
-; Copyright (c) 2016 - 2019, Intel Corporation. All rights reserved.<BR>
+; Copyright (c) 2016 - 2023, Intel Corporation. All rights reserved.<BR>
+; Copyright (c) 2020, AMD Incorporated. All rights reserved.<BR>
 ; SPDX-License-Identifier: BSD-2-Clause-Patent
 ;
 ; Module Name:
@@ -14,19 +15,7 @@
 
 %include "StuffRsbNasm.inc"
 %include "Nasm.inc"
-
-%define MSR_IA32_S_CET                     0x6A2
-%define   MSR_IA32_CET_SH_STK_EN             0x1
-%define   MSR_IA32_CET_WR_SHSTK_EN           0x2
-%define   MSR_IA32_CET_ENDBR_EN              0x4
-%define   MSR_IA32_CET_LEG_IW_EN             0x8
-%define   MSR_IA32_CET_NO_TRACK_EN           0x10
-%define   MSR_IA32_CET_SUPPRESS_DIS          0x20
-%define   MSR_IA32_CET_SUPPRESS              0x400
-%define   MSR_IA32_CET_TRACKER               0x800
-%define MSR_IA32_PL0_SSP                   0x6A4
-
-%define CR4_CET                            0x800000
+%include "Cet.inc"
 
 %define MSR_IA32_MISC_ENABLE 0x1A0
 %define MSR_EFER      0xc0000080
@@ -59,6 +48,7 @@ global ASM_PFX(gPatchSmiStack)
 global ASM_PFX(gPatchSmbase)
 extern ASM_PFX(mXdSupported)
 global ASM_PFX(gPatchXdSupported)
+global ASM_PFX(gPatchMsrIa32MiscEnableSupported)
 extern ASM_PFX(gSmiHandlerIdtr)
 
 extern ASM_PFX(mCetSupported)
@@ -153,17 +143,30 @@ ASM_PFX(gPatchSmiCr3):
 ASM_PFX(gPatchXdSupported):
     cmp     al, 0
     jz      @SkipXd
+
+; If MSR_IA32_MISC_ENABLE is supported, clear XD Disable bit
+    mov     al, strict byte 1           ; source operand may be patched
+ASM_PFX(gPatchMsrIa32MiscEnableSupported):
+    cmp     al, 1
+    jz      MsrIa32MiscEnableSupported
+
+; MSR_IA32_MISC_ENABLE not supported
+    xor     edx, edx
+    push    edx                         ; don't try to restore the XD Disable bit just before RSM
+    jmp     EnableNxe
+
 ;
 ; Check XD disable bit
 ;
+MsrIa32MiscEnableSupported:
     mov     ecx, MSR_IA32_MISC_ENABLE
     rdmsr
     push    edx                        ; save MSR_IA32_MISC_ENABLE[63-32]
     test    edx, BIT2                  ; MSR_IA32_MISC_ENABLE[34]
-    jz      .5
+    jz      EnableNxe
     and     dx, 0xFFFB                 ; clear XD Disable bit if it is set
     wrmsr
-.5:
+EnableNxe:
     mov     ecx, MSR_EFER
     rdmsr
     or      ax, MSR_EFER_XD             ; enable NXE
@@ -199,10 +202,20 @@ ASM_PFX(mPatchCetSupported):
     push    edx
     push    eax
 
+    mov     ecx, MSR_IA32_U_CET
+    rdmsr
+    push    edx
+    push    eax
+
     mov     ecx, MSR_IA32_PL0_SSP
     rdmsr
     push    edx
     push    eax
+
+    mov     ecx, MSR_IA32_U_CET
+    xor     eax, eax
+    xor     edx, edx
+    wrmsr
 
     mov     ecx, MSR_IA32_S_CET
     mov     eax, MSR_IA32_CET_SH_STK_EN
@@ -234,10 +247,12 @@ CetInterruptDone:
     bts     ecx, 16                     ; set WP
     mov     cr0, ecx
 
-    mov     eax, 0x668 | CR4_CET
+    ; set CR4.CET bit for enable CET
+    mov     eax, cr4
+    bts     eax, CR4_CET_BIT
     mov     cr4, eax
 
-    SETSSBSY
+    setssbsy
 
 CetDone:
 
@@ -261,10 +276,17 @@ CetDone:
     cmp     al, 0
     jz      CetDone2
 
-    mov     eax, 0x668
-    mov     cr4, eax       ; disable CET
+    ; clear CR4.CET bit for disable CET
+    mov     eax, cr4
+    btr     eax, CR4_CET_BIT
+    mov     cr4, eax
 
     mov     ecx, MSR_IA32_PL0_SSP
+    pop     eax
+    pop     edx
+    wrmsr
+
+    mov     ecx, MSR_IA32_U_CET
     pop     eax
     pop     edx
     wrmsr

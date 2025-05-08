@@ -6,7 +6,7 @@
 # register TemporaryRamDonePpi to call TempRamExit API, and register MemoryDiscoveredPpi
 # notify to call FspSiliconInit API.
 #
-#  Copyright (c) 2014 - 2019, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) 2014 - 2024, Intel Corporation. All rights reserved.<BR>
 #
 #  SPDX-License-Identifier: BSD-2-Clause-Patent
 #
@@ -37,24 +37,31 @@
   HobLib
   FspWrapperPlatformLib
   FspWrapperHobProcessLib
-  UefiCpuLib
+  CpuLib
   PeCoffGetEntryPointLib
   PeCoffExtraActionLib
   PerformanceLib
   TimerLib
   FspWrapperApiLib
   FspWrapperApiTestLib
+  FspMeasurementLib
+  FspWrapperMultiPhaseProcessLib
 
 [Packages]
   MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
   UefiCpuPkg/UefiCpuPkg.dec
+  SecurityPkg/SecurityPkg.dec
   IntelFsp2Pkg/IntelFsp2Pkg.dec
   IntelFsp2WrapperPkg/IntelFsp2WrapperPkg.dec
 
 [Pcd]
-  gIntelFsp2WrapperTokenSpaceGuid.PcdFspmBaseAddress     ## CONSUMES
-  gIntelFsp2WrapperTokenSpaceGuid.PcdFspmUpdDataAddress  ## CONSUMES
-  gIntelFsp2WrapperTokenSpaceGuid.PcdFspModeSelection    ## CONSUMES
+  gIntelFsp2WrapperTokenSpaceGuid.PcdFspmBaseAddress       ## CONSUMES
+  gIntelFsp2WrapperTokenSpaceGuid.PcdFspmUpdDataAddress    ## CONSUMES
+  gIntelFsp2WrapperTokenSpaceGuid.PcdFspModeSelection      ## CONSUMES
+  gIntelFsp2WrapperTokenSpaceGuid.PcdFsptBaseAddress       ## CONSUMES
+  gIntelFsp2WrapperTokenSpaceGuid.PcdFspMeasurementConfig  ## CONSUMES
+  gIntelFsp2WrapperTokenSpaceGuid.PcdFspmUpdDataAddress64  ## CONSUMES
 
 [Sources]
   FspmWrapperPeim.c
@@ -62,6 +69,11 @@
 [Guids]
   gFspHobGuid                           ## PRODUCES ## HOB
   gFspApiPerformanceGuid                ## SOMETIMES_CONSUMES ## GUID
+  gEdkiiMigratedFvInfoGuid              ## SOMETIMES_CONSUMES ## HOB
+
+[Ppis]
+  gEdkiiTcgPpiGuid                                       ## NOTIFY
+  gEfiPeiFirmwareVolumeInfoMeasurementExcludedPpiGuid    ## PRODUCES
 
 [Depex]
   gEfiPeiMasterBootModePpiGuid

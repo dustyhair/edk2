@@ -1,7 +1,7 @@
 /**@file
   Initialize Secure Encrypted Virtualization (SEV) support
 
-  Copyright (c) 2017, Advanced Micro Devices. All rights reserved.<BR>
+  Copyright (c) 2017 - 2020, Advanced Micro Devices. All rights reserved.<BR>
   Copyright (c) 2019, Citrix Systems, Inc.
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
@@ -14,8 +14,6 @@
 #include <Library/MemEncryptSevLib.h>
 #include <Library/PcdLib.h>
 #include <PiPei.h>
-#include <Register/Amd/Cpuid.h>
-#include <Register/Cpuid.h>
 
 #include "Platform.h"
 
@@ -30,9 +28,8 @@ AmdSevInitialize (
   VOID
   )
 {
-  CPUID_MEMORY_ENCRYPTION_INFO_EBX  Ebx;
-  UINT64                            EncryptionMask;
-  RETURN_STATUS                     PcdStatus;
+  UINT64         EncryptionMask;
+  RETURN_STATUS  PcdStatus;
 
   //
   // Check if SEV is enabled
@@ -42,15 +39,10 @@ AmdSevInitialize (
   }
 
   //
-  // CPUID Fn8000_001F[EBX] Bit 0:5 (memory encryption bit position)
-  //
-  AsmCpuid (CPUID_MEMORY_ENCRYPTION_INFO, NULL, &Ebx.Uint32, NULL, NULL);
-  EncryptionMask = LShiftU64 (1, Ebx.Bits.PtePosBits);
-
-  //
   // Set Memory Encryption Mask PCD
   //
-  PcdStatus = PcdSet64S (PcdPteMemoryEncryptionAddressOrMask, EncryptionMask);
+  EncryptionMask = MemEncryptSevGetEncryptionMask ();
+  PcdStatus      = PcdSet64S (PcdPteMemoryEncryptionAddressOrMask, EncryptionMask);
   ASSERT_RETURN_ERROR (PcdStatus);
 
   DEBUG ((DEBUG_INFO, "SEV is enabled (mask 0x%lx)\n", EncryptionMask));

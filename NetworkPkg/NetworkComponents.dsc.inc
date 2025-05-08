@@ -41,17 +41,23 @@
   !endif
 
   NetworkPkg/TcpDxe/TcpDxe.inf
-  NetworkPkg/UefiPxeBcDxe/UefiPxeBcDxe.inf
+
+  !if $(NETWORK_PXE_BOOT_ENABLE) == TRUE
+    NetworkPkg/UefiPxeBcDxe/UefiPxeBcDxe.inf
+  !endif
 
   !if $(NETWORK_TLS_ENABLE) == TRUE
     NetworkPkg/TlsDxe/TlsDxe.inf
     NetworkPkg/TlsAuthConfigDxe/TlsAuthConfigDxe.inf
   !endif
 
-  !if $(NETWORK_HTTP_BOOT_ENABLE) == TRUE
+  !if ($(NETWORK_HTTP_BOOT_ENABLE) == TRUE) OR ($(NETWORK_HTTP_ENABLE) == TRUE)
     NetworkPkg/DnsDxe/DnsDxe.inf
     NetworkPkg/HttpDxe/HttpDxe.inf
     NetworkPkg/HttpUtilitiesDxe/HttpUtilitiesDxe.inf
+  !endif
+
+  !if $(NETWORK_HTTP_BOOT_ENABLE) == TRUE
     NetworkPkg/HttpBootDxe/HttpBootDxe.inf
   !endif
 

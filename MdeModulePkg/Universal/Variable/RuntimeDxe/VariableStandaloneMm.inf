@@ -18,8 +18,9 @@
 #  may not be modified without authorization. If platform fails to protect these resources,
 #  the authentication service provided in this driver will be broken, and the behavior is undefined.
 #
-# Copyright (c) 2010 - 2019, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2010 - 2024, Intel Corporation. All rights reserved.<BR>
 # Copyright (c) 2018, Linaro, Ltd. All rights reserved.<BR>
+# Copyright (c) Microsoft Corporation.
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 #
 ##
@@ -45,12 +46,19 @@
   Variable.c
   VariableSmm.c
   VariableStandaloneMm.c
+  VariableNonVolatile.c
+  VariableNonVolatile.h
+  VariableParsing.c
+  VariableParsing.h
+  VariableRuntimeCache.c
+  VariableRuntimeCache.h
   VarCheck.c
   Variable.h
   PrivilegePolymorphic.h
   VariableExLib.c
   TcgMorLockSmm.c
   SpeculationBarrierSmm.c
+  VariableLockRequestToLock.c
 
 [Packages]
   MdePkg/MdePkg.dec
@@ -63,11 +71,16 @@
   BaseMemoryLib
   DebugLib
   HobLib
+  MemLib
   MemoryAllocationLib
   MmServicesTableLib
+  SafeIntLib
   StandaloneMmDriverEntryPoint
   SynchronizationLib
   VarCheckLib
+  VariableFlashInfoLib
+  VariablePolicyLib
+  VariablePolicyHelperLib
 
 [Protocols]
   gEfiSmmFirmwareVolumeBlockProtocolGuid        ## CONSUMES
@@ -102,6 +115,7 @@
   gEfiMemoryOverwriteControlDataGuid            ## SOMETIMES_CONSUMES   ## Variable:L"MemoryOverwriteRequestControl"
   gEfiMemoryOverwriteRequestControlLockGuid     ## SOMETIMES_PRODUCES   ## Variable:L"MemoryOverwriteRequestControlLock"
 
+  gSmmVariableWriteGuid                         ## PRODUCES             ## GUID # Install protocol
   gEfiSystemNvDataFvGuid                        ## CONSUMES             ## GUID
   gEdkiiFaultTolerantWriteGuid                  ## SOMETIMES_CONSUMES   ## HOB
 
@@ -109,10 +123,7 @@
   ## SOMETIMES_PRODUCES   ## Variable:L"VarErrorFlag"
   gEdkiiVarErrorFlagGuid
 
-[FixedPcd]
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableSize       ## CONSUMES
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableBase       ## SOMETIMES_CONSUMES
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableBase64     ## CONSUMES
+[Pcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxVariableSize                  ## CONSUMES
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxAuthVariableSize              ## CONSUMES
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxVolatileVariableSize          ## CONSUMES

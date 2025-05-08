@@ -43,7 +43,7 @@ ASM_PFX(AsmExecute32BitCode):
     cli
 
     ;
-    ; save orignal GDTR and CS
+    ; save original GDTR and CS
     ;
     mov     rax, ds
     push    rax
@@ -110,9 +110,11 @@ ASM_PFX(AsmExecute32BitCode):
     retf
 
 Compatible:
-    ; reload DS/ES/SS to make sure they are correct referred to current GDT
+    ; reload DS/ES/FS/GS/SS to make sure they are correct referred to current GDT
     mov     ds, ax
     mov     es, ax
+    mov     fs, ax
+    mov     gs, ax
     mov     ss, ax
 
     ;
@@ -190,7 +192,7 @@ ReloadCS:
     pop     rdi
     popfq
     ;
-    ; Switch to orignal GDT and CS. here rsp is pointer to the orignal GDT descriptor.
+    ; Switch to original GDT and CS. here rsp is pointer to the original GDT descriptor.
     ;
     lgdt    [rsp]
     ;
@@ -198,7 +200,7 @@ ReloadCS:
     ;
     add     rsp, 0x10
     ;
-    ; switch to orignal CS and GDTR
+    ; switch to original CS and GDTR
     ;
     pop     r9                 ; get  CS
     shl     r9,  32            ; rcx[32..47] <- Cs
@@ -208,11 +210,13 @@ ReloadCS:
     retf
 .0:
     ;
-    ; Reload original DS/ES/SS
+    ; Reload original DS/ES/FS/GS/SS
     ;
     pop     rcx
     mov     ds, rcx
     mov     es, rcx
+    mov     fs, rcx
+    mov     gs, rcx
     mov     ss, rcx
 
     ;

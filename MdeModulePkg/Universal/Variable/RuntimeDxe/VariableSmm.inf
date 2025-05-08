@@ -19,6 +19,7 @@
 #  the authentication service provided in this driver will be broken, and the behavior is undefined.
 #
 # Copyright (c) 2010 - 2019, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) Microsoft Corporation.
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 #
 ##
@@ -45,12 +46,19 @@
   Variable.c
   VariableTraditionalMm.c
   VariableSmm.c
+  VariableNonVolatile.c
+  VariableNonVolatile.h
+  VariableParsing.c
+  VariableParsing.h
+  VariableRuntimeCache.c
+  VariableRuntimeCache.h
   VarCheck.c
   Variable.h
   PrivilegePolymorphic.h
   VariableExLib.c
   TcgMorLockSmm.c
   SpeculationBarrierSmm.c
+  VariableLockRequestToLock.c
 
 [Packages]
   MdePkg/MdePkg.dec
@@ -72,6 +80,10 @@
   AuthVariableLib
   VarCheckLib
   UefiBootServicesTableLib
+  VariableFlashInfoLib
+  VariablePolicyLib
+  VariablePolicyHelperLib
+  SafeIntLib
 
 [Protocols]
   gEfiSmmFirmwareVolumeBlockProtocolGuid        ## CONSUMES
@@ -117,9 +129,6 @@
   gEdkiiVarErrorFlagGuid
 
 [Pcd]
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableSize       ## CONSUMES
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableBase       ## SOMETIMES_CONSUMES
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableBase64     ## CONSUMES
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxVariableSize                  ## CONSUMES
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxAuthVariableSize              ## CONSUMES
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxVolatileVariableSize          ## CONSUMES

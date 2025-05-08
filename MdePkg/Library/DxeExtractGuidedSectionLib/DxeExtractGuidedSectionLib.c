@@ -14,14 +14,14 @@
 #include <Library/ExtractGuidedSectionLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 
-#define EXTRACT_HANDLER_TABLE_SIZE   0x10
+#define EXTRACT_HANDLER_TABLE_SIZE  0x10
 
-UINT32               mNumberOfExtractHandler = 0;
-UINT32               mMaxNumberOfExtractHandler = 0;
+UINT32  mNumberOfExtractHandler    = 0;
+UINT32  mMaxNumberOfExtractHandler = 0;
 
-GUID                 *mExtractHandlerGuidTable = NULL;
-EXTRACT_GUIDED_SECTION_DECODE_HANDLER   *mExtractDecodeHandlerTable = NULL;
-EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER *mExtractGetInfoHandlerTable = NULL;
+GUID                                     *mExtractHandlerGuidTable    = NULL;
+EXTRACT_GUIDED_SECTION_DECODE_HANDLER    *mExtractDecodeHandlerTable  = NULL;
+EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER  *mExtractGetInfoHandlerTable = NULL;
 
 /**
   Reallocates more global memory to store the registered guid and Handler list.
@@ -42,7 +42,7 @@ ReallocateExtractHandlerTable (
                                mMaxNumberOfExtractHandler * sizeof (GUID),
                                (mMaxNumberOfExtractHandler + EXTRACT_HANDLER_TABLE_SIZE) * sizeof (GUID),
                                mExtractHandlerGuidTable
-                             );
+                               );
 
   if (mExtractHandlerGuidTable == NULL) {
     goto Done;
@@ -52,10 +52,10 @@ ReallocateExtractHandlerTable (
   // Reallocate memory for Decode handler Table
   //
   mExtractDecodeHandlerTable = ReallocatePool (
-                               mMaxNumberOfExtractHandler * sizeof (EXTRACT_GUIDED_SECTION_DECODE_HANDLER),
-                               (mMaxNumberOfExtractHandler + EXTRACT_HANDLER_TABLE_SIZE) * sizeof (EXTRACT_GUIDED_SECTION_DECODE_HANDLER),
-                               mExtractDecodeHandlerTable
-                             );
+                                 mMaxNumberOfExtractHandler * sizeof (EXTRACT_GUIDED_SECTION_DECODE_HANDLER),
+                                 (mMaxNumberOfExtractHandler + EXTRACT_HANDLER_TABLE_SIZE) * sizeof (EXTRACT_GUIDED_SECTION_DECODE_HANDLER),
+                                 mExtractDecodeHandlerTable
+                                 );
 
   if (mExtractDecodeHandlerTable == NULL) {
     goto Done;
@@ -65,10 +65,10 @@ ReallocateExtractHandlerTable (
   // Reallocate memory for GetInfo handler Table
   //
   mExtractGetInfoHandlerTable = ReallocatePool (
-                               mMaxNumberOfExtractHandler * sizeof (EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER),
-                               (mMaxNumberOfExtractHandler + EXTRACT_HANDLER_TABLE_SIZE) * sizeof (EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER),
-                               mExtractGetInfoHandlerTable
-                             );
+                                  mMaxNumberOfExtractHandler * sizeof (EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER),
+                                  (mMaxNumberOfExtractHandler + EXTRACT_HANDLER_TABLE_SIZE) * sizeof (EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER),
+                                  mExtractGetInfoHandlerTable
+                                  );
 
   if (mExtractGetInfoHandlerTable == NULL) {
     goto Done;
@@ -84,15 +84,18 @@ Done:
   if (mExtractHandlerGuidTable != NULL) {
     FreePool (mExtractHandlerGuidTable);
   }
+
   if (mExtractDecodeHandlerTable != NULL) {
     FreePool (mExtractDecodeHandlerTable);
   }
+
   if (mExtractGetInfoHandlerTable != NULL) {
     FreePool (mExtractGetInfoHandlerTable);
   }
 
   return RETURN_OUT_OF_RESOURCES;
 }
+
 /**
   Constructor allocates the global memory to store the registered guid and Handler list.
 
@@ -150,7 +153,7 @@ ExtractGuidedSectionGetGuidList (
   If GetInfoHandler is NULL, then ASSERT().
   If DecodeHandler is NULL, then ASSERT().
 
-  @param[in]  SectionGuid    A pointer to the GUID associated with the the handlers
+  @param[in]  SectionGuid    A pointer to the GUID associated with the handlers
                              of the GUIDed section type being registered.
   @param[in]  GetInfoHandler The pointer to a function that examines a GUIDed section and returns the
                              size of the decoded buffer and the size of an optional scratch buffer
@@ -170,8 +173,8 @@ ExtractGuidedSectionRegisterHandlers (
   IN        EXTRACT_GUIDED_SECTION_DECODE_HANDLER    DecodeHandler
   )
 {
-  UINT32 Index;
-  VOID   *GuidData;
+  UINT32  Index;
+  VOID    *GuidData;
 
   //
   // Check input parameter.
@@ -183,13 +186,13 @@ ExtractGuidedSectionRegisterHandlers (
   //
   // Search the match registered GetInfo handler for the input guided section.
   //
-  for (Index = 0; Index < mNumberOfExtractHandler; Index ++) {
+  for (Index = 0; Index < mNumberOfExtractHandler; Index++) {
     if (CompareGuid (&mExtractHandlerGuidTable[Index], SectionGuid)) {
       //
       // If the guided handler has been registered before, only update its handler.
       //
-      mExtractDecodeHandlerTable [Index] = DecodeHandler;
-      mExtractGetInfoHandlerTable [Index] = GetInfoHandler;
+      mExtractDecodeHandlerTable[Index]  = DecodeHandler;
+      mExtractGetInfoHandlerTable[Index] = GetInfoHandler;
       return RETURN_SUCCESS;
     }
   }
@@ -206,17 +209,17 @@ ExtractGuidedSectionRegisterHandlers (
   //
   // Register new Handler and guid value.
   //
-  CopyGuid (&mExtractHandlerGuidTable [mNumberOfExtractHandler], SectionGuid);
-  mExtractDecodeHandlerTable [mNumberOfExtractHandler] = DecodeHandler;
-  mExtractGetInfoHandlerTable [mNumberOfExtractHandler++] = GetInfoHandler;
+  CopyGuid (&mExtractHandlerGuidTable[mNumberOfExtractHandler], SectionGuid);
+  mExtractDecodeHandlerTable[mNumberOfExtractHandler]    = DecodeHandler;
+  mExtractGetInfoHandlerTable[mNumberOfExtractHandler++] = GetInfoHandler;
 
   //
   // Install the Guided Section GUID configuration table to record the GUID itself.
   // Then the content of the configuration table buffer will be the same as the GUID value itself.
   //
-  GuidData = AllocateCopyPool (sizeof (GUID), (VOID *) SectionGuid);
+  GuidData = AllocateCopyPool (sizeof (GUID), (VOID *)SectionGuid);
   if (GuidData != NULL) {
-    gBS->InstallConfigurationTable ((EFI_GUID *) SectionGuid, GuidData);
+    gBS->InstallConfigurationTable ((EFI_GUID *)SectionGuid, GuidData);
   }
 
   return RETURN_SUCCESS;
@@ -231,9 +234,9 @@ ExtractGuidedSectionRegisterHandlers (
   Examines a GUIDed section specified by InputSection.
   If GUID for InputSection does not match any of the GUIDs registered through ExtractGuidedSectionRegisterHandlers(),
   then RETURN_UNSUPPORTED is returned.
-  If the GUID of InputSection does match the GUID that this handler supports, then the the associated handler
+  If the GUID of InputSection does match the GUID that this handler supports, then the associated handler
   of type EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER that was registered with ExtractGuidedSectionRegisterHandlers()
-  is used to retrieve the OututBufferSize, ScratchSize, and Attributes values. The return status from the handler of
+  is used to retrieve the OutputBufferSize, ScratchSize, and Attributes values. The return status from the handler of
   type EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER is returned.
 
   If InputSection is NULL, then ASSERT().
@@ -265,8 +268,8 @@ ExtractGuidedSectionGetInfo (
   OUT       UINT16  *SectionAttribute
   )
 {
-  UINT32 Index;
-  EFI_GUID *SectionDefinitionGuid;
+  UINT32    Index;
+  EFI_GUID  *SectionDefinitionGuid;
 
   ASSERT (InputSection != NULL);
   ASSERT (OutputBufferSize != NULL);
@@ -274,25 +277,25 @@ ExtractGuidedSectionGetInfo (
   ASSERT (SectionAttribute != NULL);
 
   if (IS_SECTION2 (InputSection)) {
-    SectionDefinitionGuid = &(((EFI_GUID_DEFINED_SECTION2 *) InputSection)->SectionDefinitionGuid);
+    SectionDefinitionGuid = &(((EFI_GUID_DEFINED_SECTION2 *)InputSection)->SectionDefinitionGuid);
   } else {
-    SectionDefinitionGuid = &(((EFI_GUID_DEFINED_SECTION *) InputSection)->SectionDefinitionGuid);
+    SectionDefinitionGuid = &(((EFI_GUID_DEFINED_SECTION *)InputSection)->SectionDefinitionGuid);
   }
 
   //
   // Search the match registered GetInfo handler for the input guided section.
   //
-  for (Index = 0; Index < mNumberOfExtractHandler; Index ++) {
+  for (Index = 0; Index < mNumberOfExtractHandler; Index++) {
     if (CompareGuid (&mExtractHandlerGuidTable[Index], SectionDefinitionGuid)) {
       //
       // Call the match handler to getinfo for the input section data.
       //
-      return mExtractGetInfoHandlerTable [Index] (
-                InputSection,
-                OutputBufferSize,
-                ScratchBufferSize,
-                SectionAttribute
-              );
+      return mExtractGetInfoHandlerTable[Index](
+                                                InputSection,
+                                                OutputBufferSize,
+                                                ScratchBufferSize,
+                                                SectionAttribute
+                                                );
     }
   }
 
@@ -311,7 +314,7 @@ ExtractGuidedSectionGetInfo (
   Decodes the GUIDed section specified by InputSection.
   If GUID for InputSection does not match any of the GUIDs registered through ExtractGuidedSectionRegisterHandlers(),
   then RETURN_UNSUPPORTED is returned.
-  If the GUID of InputSection does match the GUID that this handler supports, then the the associated handler
+  If the GUID of InputSection does match the GUID that this handler supports, then the associated handler
   of type EXTRACT_GUIDED_SECTION_DECODE_HANDLER that was registered with ExtractGuidedSectionRegisterHandlers()
   is used to decode InputSection into the buffer specified by OutputBuffer and the authentication status of this
   decode operation is returned in AuthenticationStatus.  If the decoded buffer is identical to the data in InputSection,
@@ -342,12 +345,12 @@ EFIAPI
 ExtractGuidedSectionDecode (
   IN  CONST VOID    *InputSection,
   OUT       VOID    **OutputBuffer,
-  IN        VOID    *ScratchBuffer,        OPTIONAL
+  IN        VOID    *ScratchBuffer         OPTIONAL,
   OUT       UINT32  *AuthenticationStatus
   )
 {
-  UINT32 Index;
-  EFI_GUID *SectionDefinitionGuid;
+  UINT32    Index;
+  EFI_GUID  *SectionDefinitionGuid;
 
   //
   // Check the input parameters
@@ -357,25 +360,25 @@ ExtractGuidedSectionDecode (
   ASSERT (AuthenticationStatus != NULL);
 
   if (IS_SECTION2 (InputSection)) {
-    SectionDefinitionGuid = &(((EFI_GUID_DEFINED_SECTION2 *) InputSection)->SectionDefinitionGuid);
+    SectionDefinitionGuid = &(((EFI_GUID_DEFINED_SECTION2 *)InputSection)->SectionDefinitionGuid);
   } else {
-    SectionDefinitionGuid = &(((EFI_GUID_DEFINED_SECTION *) InputSection)->SectionDefinitionGuid);
+    SectionDefinitionGuid = &(((EFI_GUID_DEFINED_SECTION *)InputSection)->SectionDefinitionGuid);
   }
 
   //
   // Search the match registered extract handler for the input guided section.
   //
-  for (Index = 0; Index < mNumberOfExtractHandler; Index ++) {
+  for (Index = 0; Index < mNumberOfExtractHandler; Index++) {
     if (CompareGuid (&mExtractHandlerGuidTable[Index], SectionDefinitionGuid)) {
       //
       // Call the match handler to extract raw data for the input section data.
       //
-      return mExtractDecodeHandlerTable [Index] (
-                InputSection,
-                OutputBuffer,
-                ScratchBuffer,
-                AuthenticationStatus
-              );
+      return mExtractDecodeHandlerTable[Index](
+                                               InputSection,
+                                               OutputBuffer,
+                                               ScratchBuffer,
+                                               AuthenticationStatus
+                                               );
     }
   }
 
@@ -397,7 +400,7 @@ ExtractGuidedSectionDecode (
 
   If SectionGuid is NULL, then ASSERT().
 
-  @param[in]  SectionGuid    A pointer to the GUID associated with the handlersof the GUIDed
+  @param[in]  SectionGuid    A pointer to the GUID associated with the handlers of the GUIDed
                              section type being retrieved.
   @param[out] GetInfoHandler Pointer to a function that examines a GUIDed section and returns
                              the size of the decoded buffer and the size of an optional scratch
@@ -416,11 +419,11 @@ RETURN_STATUS
 EFIAPI
 ExtractGuidedSectionGetHandlers (
   IN CONST   GUID                                     *SectionGuid,
-  OUT        EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER  *GetInfoHandler,  OPTIONAL
+  OUT        EXTRACT_GUIDED_SECTION_GET_INFO_HANDLER  *GetInfoHandler   OPTIONAL,
   OUT        EXTRACT_GUIDED_SECTION_DECODE_HANDLER    *DecodeHandler    OPTIONAL
   )
 {
-  UINT32 Index;
+  UINT32  Index;
 
   //
   // Check input parameter.
@@ -430,20 +433,22 @@ ExtractGuidedSectionGetHandlers (
   //
   // Search the match registered GetInfo handler for the input guided section.
   //
-  for (Index = 0; Index < mNumberOfExtractHandler; Index ++) {
+  for (Index = 0; Index < mNumberOfExtractHandler; Index++) {
     if (CompareGuid (&mExtractHandlerGuidTable[Index], SectionGuid)) {
-
       //
       // If the guided handler has been registered before, then return the registered handlers.
       //
       if (GetInfoHandler != NULL) {
         *GetInfoHandler = mExtractGetInfoHandlerTable[Index];
       }
+
       if (DecodeHandler != NULL) {
         *DecodeHandler = mExtractDecodeHandlerTable[Index];
       }
+
       return RETURN_SUCCESS;
     }
   }
+
   return RETURN_NOT_FOUND;
 }

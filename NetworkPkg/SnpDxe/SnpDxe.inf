@@ -4,7 +4,7 @@
 #  This module produces Simple Network Protocol upon EFI Network Interface
 #  Identifier Protocol, to provide a packet level interface to a network adapter.
 #
-#  Copyright (c) 2006 - 2018, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) 2006 - 2019, Intel Corporation. All rights reserved.<BR>
 #  SPDX-License-Identifier: BSD-2-Clause-Patent
 #
 ##
@@ -65,13 +65,16 @@
   NetLib
 
 [Guids]
-  gEfiEventExitBootServicesGuid                 ## SOMETIMES_CONSUMES ## Event
+  gEfiEventBeforeExitBootServicesGuid           ## SOMETIMES_CONSUMES ## Event
 
 [Protocols]
   gEfiSimpleNetworkProtocolGuid                 ## BY_START
   gEfiDevicePathProtocolGuid                    ## TO_START
   gEfiNetworkInterfaceIdentifierProtocolGuid_31 ## TO_START
   gEfiPciIoProtocolGuid                         ## TO_START
+
+[Pcd]
+  gEfiNetworkPkgTokenSpaceGuid.PcdSnpCreateExitBootServicesEvent   ## CONSUMES
 
 [UserExtensions.TianoCore."ExtraFiles"]
   SnpDxeExtra.uni

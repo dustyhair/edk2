@@ -2,63 +2,65 @@
 
   Copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
   Copyright (c) 2011 - 2014, ARM Limited. All rights reserved.
+  Copyright (c) 2021, NUVIA Inc. All rights reserved.<BR>
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
-#include <Uefi.h>
-#include <Chipset/ArmV7.h>
+
+#include <Base.h>
+
 #include <Library/ArmLib.h>
-#include <Library/BaseLib.h>
-#include <Library/IoLib.h>
+#include <Library/DebugLib.h>
+
+#include <Arm/AArch32.h>
+
 #include "ArmV7Lib.h"
 #include "ArmLibPrivate.h"
 
-VOID
-ArmV7DataCacheOperation (
-  IN  ARM_V7_CACHE_OPERATION  DataCacheOperation
-  )
-{
-  UINTN     SavedInterruptState;
+/**
+  Check whether the CPU supports the GIC system register interface (any version)
 
-  SavedInterruptState = ArmGetInterruptState ();
-  ArmDisableInterrupts ();
+  @return   Whether GIC System Register Interface is supported
 
-  ArmV7AllDataCachesOperation (DataCacheOperation);
-
-  ArmDataSynchronizationBarrier ();
-
-  if (SavedInterruptState) {
-    ArmEnableInterrupts ();
-  }
-}
-
-VOID
+**/
+BOOLEAN
 EFIAPI
-ArmInvalidateDataCache (
+ArmHasGicSystemRegisters (
   VOID
   )
 {
-  ArmDataSynchronizationBarrier ();
-  ArmV7DataCacheOperation (ArmInvalidateDataCacheEntryBySetWay);
+  return ((ArmReadIdPfr1 () & ARM_PFR1_GIC) != 0);
 }
 
-VOID
+/**
+  Check whether the CPU supports the Security extensions
+
+  @return   Whether the Security extensions are implemented
+
+**/
+BOOLEAN
 EFIAPI
-ArmCleanInvalidateDataCache (
+ArmHasSecurityExtensions (
   VOID
   )
 {
-  ArmDataSynchronizationBarrier ();
-  ArmV7DataCacheOperation (ArmCleanInvalidateDataCacheEntryBySetWay);
+  return ((ArmReadIdPfr1 () & ARM_PFR1_SEC) != 0);
 }
 
-VOID
+/** Checks if CCIDX is implemented.
+
+   @retval TRUE  CCIDX is implemented.
+   @retval FALSE CCIDX is not implemented.
+**/
+BOOLEAN
 EFIAPI
-ArmCleanDataCache (
+ArmHasCcidx (
   VOID
   )
 {
-  ArmDataSynchronizationBarrier ();
-  ArmV7DataCacheOperation (ArmCleanDataCacheEntryBySetWay);
+  UINTN  Mmfr4;
+
+  Mmfr4 = ArmReadIdMmfr4 ();
+  return (((Mmfr4 >> 24) & 0xF) == 1) ? TRUE : FALSE;
 }

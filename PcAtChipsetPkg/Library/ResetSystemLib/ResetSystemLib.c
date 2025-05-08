@@ -29,7 +29,7 @@ ResetCold (
   VOID
   )
 {
-  IoWrite8 ((UINTN) PcdGet64 (PcdResetControlRegister), PcdGet8 (PcdResetControlValueColdReset));
+  IoWrite8 ((UINTN)PcdGet64 (PcdResetControlRegister), PcdGet8 (PcdResetControlValueColdReset));
 }
 
 /**
@@ -45,7 +45,7 @@ ResetWarm (
   VOID
   )
 {
-  IoWrite8 ((UINTN) PcdGet64 (PcdResetControlRegister), PcdGet8 (PcdResetControlValueColdReset));
+  IoWrite8 ((UINTN)PcdGet64 (PcdResetControlRegister), PcdGet8 (PcdResetControlValueColdReset));
 }
 
 /**
@@ -58,24 +58,6 @@ ResetWarm (
 VOID
 EFIAPI
 ResetShutdown (
-  VOID
-  )
-{
-  ASSERT (FALSE);
-}
-
-
-/**
-  Calling this function causes the system to enter a power state for capsule
-  update.
-
-  Reset update should not return, if it returns, it means the system does
-  not support capsule update.
-
-**/
-VOID
-EFIAPI
-EnterS3WithImmediateWake (
   VOID
   )
 {
@@ -96,8 +78,8 @@ EnterS3WithImmediateWake (
 VOID
 EFIAPI
 ResetPlatformSpecific (
-  IN UINTN   DataSize,
-  IN VOID    *ResetData
+  IN UINTN  DataSize,
+  IN VOID   *ResetData
   )
 {
   ResetCold ();
@@ -118,30 +100,30 @@ ResetPlatformSpecific (
 VOID
 EFIAPI
 ResetSystem (
-  IN EFI_RESET_TYPE               ResetType,
-  IN EFI_STATUS                   ResetStatus,
-  IN UINTN                        DataSize,
-  IN VOID                         *ResetData OPTIONAL
+  IN EFI_RESET_TYPE  ResetType,
+  IN EFI_STATUS      ResetStatus,
+  IN UINTN           DataSize,
+  IN VOID            *ResetData OPTIONAL
   )
 {
   switch (ResetType) {
-  case EfiResetWarm:
-    ResetWarm ();
-    break;
+    case EfiResetWarm:
+      ResetWarm ();
+      break;
 
-  case EfiResetCold:
-    ResetCold ();
-    break;
+    case EfiResetCold:
+      ResetCold ();
+      break;
 
-  case EfiResetShutdown:
-    ResetShutdown ();
-    return;
+    case EfiResetShutdown:
+      ResetShutdown ();
+      return;
 
-  case EfiResetPlatformSpecific:
-    ResetPlatformSpecific (DataSize, ResetData);
-    return;
+    case EfiResetPlatformSpecific:
+      ResetPlatformSpecific (DataSize, ResetData);
+      return;
 
-  default:
-    return;
+    default:
+      return;
   }
 }

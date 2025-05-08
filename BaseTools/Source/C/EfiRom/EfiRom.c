@@ -1014,7 +1014,7 @@ Returns:
         // Device IDs specified with -i
         // Make sure there's at least one more parameter
         //
-        if (Argc < 1) {
+        if (Argc == 1) {
           Error (NULL, 0, 2000, "Invalid parameter", "Missing Device Id with %s option!", OptionName);
           ReturnStatus = 1;
           goto Done;
@@ -1112,7 +1112,7 @@ Returns:
           goto Done;
         }
         if (DebugLevel > 9)  {
-          Error (NULL, 0, 2000, "Invalid option value", "Debug Level range is 0-9, current input level is %d", Argv[1]);
+          Error (NULL, 0, 2000, "Invalid option value", "Debug Level range is 0-9, current input level is %llu", DebugLevel);
           ReturnStatus = 1;
           goto Done;
         }

@@ -2,64 +2,96 @@
 
   Copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
   Portions copyright (c) 2011 - 2014, ARM Ltd. All rights reserved.<BR>
+  Copyright (c) 2021, NUVIA Inc. All rights reserved.<BR>
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#include <Uefi.h>
-#include <Chipset/AArch64.h>
+#include <Base.h>
+
 #include <Library/ArmLib.h>
-#include <Library/BaseLib.h>
-#include <Library/IoLib.h>
+#include <Library/DebugLib.h>
+
+#include <AArch64/AArch64.h>
+
 #include "AArch64Lib.h"
 #include "ArmLibPrivate.h"
 
-VOID
-AArch64DataCacheOperation (
-  IN  AARCH64_CACHE_OPERATION  DataCacheOperation
-  )
-{
-  UINTN     SavedInterruptState;
+/**
+  Check whether the CPU supports the GIC system register interface (any version)
 
-  SavedInterruptState = ArmGetInterruptState ();
-  ArmDisableInterrupts();
+  @return   Whether GIC System Register Interface is supported
 
-  AArch64AllDataCachesOperation (DataCacheOperation);
-
-  ArmDataSynchronizationBarrier ();
-
-  if (SavedInterruptState) {
-    ArmEnableInterrupts ();
-  }
-}
-
-VOID
+**/
+BOOLEAN
 EFIAPI
-ArmInvalidateDataCache (
+ArmHasGicSystemRegisters (
   VOID
   )
 {
-  ArmDataSynchronizationBarrier ();
-  AArch64DataCacheOperation (ArmInvalidateDataCacheEntryBySetWay);
+  return ((ArmReadIdAA64Pfr0 () & AARCH64_PFR0_GIC) != 0);
 }
 
-VOID
+/** Checks if CCIDX is implemented.
+
+   @retval TRUE  CCIDX is implemented.
+   @retval FALSE CCIDX is not implemented.
+**/
+BOOLEAN
 EFIAPI
-ArmCleanInvalidateDataCache (
+ArmHasCcidx (
   VOID
   )
 {
-  ArmDataSynchronizationBarrier ();
-  AArch64DataCacheOperation (ArmCleanInvalidateDataCacheEntryBySetWay);
+  UINTN  Mmfr2;
+
+  Mmfr2 = ArmReadIdAA64Mmfr2 ();
+  return (((Mmfr2 >> 20) & 0xF) == 1) ? TRUE : FALSE;
 }
 
-VOID
+/**
+  Checks whether the CPU implements the Virtualization Host Extensions.
+
+  @retval TRUE  FEAT_VHE is implemented.
+  @retval FALSE FEAT_VHE is not mplemented.
+**/
+BOOLEAN
 EFIAPI
-ArmCleanDataCache (
+ArmHasVhe (
   VOID
   )
 {
-  ArmDataSynchronizationBarrier ();
-  AArch64DataCacheOperation (ArmCleanDataCacheEntryBySetWay);
+  return ((ArmReadIdAA64Mmfr1 () & AARCH64_MMFR1_VH) != 0);
+}
+
+/**
+  Checks whether the CPU implements the Trace Buffer Extension.
+
+  @retval TRUE  FEAT_TRBE is implemented.
+  @retval FALSE FEAT_TRBE is not mplemented.
+**/
+BOOLEAN
+EFIAPI
+ArmHasTrbe (
+  VOID
+  )
+{
+  return ((ArmReadIdAA64Dfr0 () & AARCH64_DFR0_TRBE) != 0);
+}
+
+/**
+  Checks whether the CPU implements the Embedded Trace Extension.
+
+  @retval TRUE  FEAT_ETE is implemented.
+  @retval FALSE FEAT_ETE is not mplemented.
+**/
+BOOLEAN
+EFIAPI
+ArmHasEte (
+  VOID
+  )
+{
+  // The ID_AA64DFR0_EL1.TraceVer field identifies the presence of FEAT_ETE.
+  return ((ArmReadIdAA64Dfr0 () & AARCH64_DFR0_TRACEVER) != 0);
 }

@@ -5,6 +5,7 @@
   This module adds Variable Hook and check MemoryOverwriteRequestControlLock.
 
 Copyright (c) 2016 - 2018, Intel Corporation. All rights reserved.<BR>
+Copyright (c) Microsoft Corporation.
 SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
@@ -17,35 +18,39 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/BaseMemoryLib.h>
 #include "Variable.h"
 
+#include <Protocol/VariablePolicy.h>
+#include <Library/VariablePolicyHelperLib.h>
+#include <Library/VariablePolicyLib.h>
+
 typedef struct {
-  CHAR16                                 *VariableName;
-  EFI_GUID                               *VendorGuid;
+  CHAR16      *VariableName;
+  EFI_GUID    *VendorGuid;
 } VARIABLE_TYPE;
 
 VARIABLE_TYPE  mMorVariableType[] = {
-  {MEMORY_OVERWRITE_REQUEST_VARIABLE_NAME,      &gEfiMemoryOverwriteControlDataGuid},
-  {MEMORY_OVERWRITE_REQUEST_CONTROL_LOCK_NAME,  &gEfiMemoryOverwriteRequestControlLockGuid},
+  { MEMORY_OVERWRITE_REQUEST_VARIABLE_NAME,     &gEfiMemoryOverwriteControlDataGuid        },
+  { MEMORY_OVERWRITE_REQUEST_CONTROL_LOCK_NAME, &gEfiMemoryOverwriteRequestControlLockGuid },
 };
 
-BOOLEAN         mMorPassThru = FALSE;
+BOOLEAN  mMorPassThru = FALSE;
 
-#define MOR_LOCK_DATA_UNLOCKED           0x0
-#define MOR_LOCK_DATA_LOCKED_WITHOUT_KEY 0x1
-#define MOR_LOCK_DATA_LOCKED_WITH_KEY    0x2
+#define MOR_LOCK_DATA_UNLOCKED            0x0
+#define MOR_LOCK_DATA_LOCKED_WITHOUT_KEY  0x1
+#define MOR_LOCK_DATA_LOCKED_WITH_KEY     0x2
 
 #define MOR_LOCK_V1_SIZE      1
 #define MOR_LOCK_V2_KEY_SIZE  8
 
 typedef enum {
   MorLockStateUnlocked = 0,
-  MorLockStateLocked = 1,
+  MorLockStateLocked   = 1,
 } MOR_LOCK_STATE;
 
 BOOLEAN         mMorLockInitializationRequired = FALSE;
 UINT8           mMorLockKey[MOR_LOCK_V2_KEY_SIZE];
 BOOLEAN         mMorLockKeyEmpty = TRUE;
 BOOLEAN         mMorLockPassThru = FALSE;
-MOR_LOCK_STATE  mMorLockState = MorLockStateUnlocked;
+MOR_LOCK_STATE  mMorLockState    = MorLockStateUnlocked;
 
 /**
   Returns if this is MOR related variable.
@@ -58,18 +63,20 @@ MOR_LOCK_STATE  mMorLockState = MorLockStateUnlocked;
 **/
 BOOLEAN
 IsAnyMorVariable (
-  IN CHAR16                                 *VariableName,
-  IN EFI_GUID                               *VendorGuid
+  IN CHAR16    *VariableName,
+  IN EFI_GUID  *VendorGuid
   )
 {
-  UINTN   Index;
+  UINTN  Index;
 
-  for (Index = 0; Index < sizeof(mMorVariableType)/sizeof(mMorVariableType[0]); Index++) {
+  for (Index = 0; Index < sizeof (mMorVariableType)/sizeof (mMorVariableType[0]); Index++) {
     if ((StrCmp (VariableName, mMorVariableType[Index].VariableName) == 0) &&
-        (CompareGuid (VendorGuid, mMorVariableType[Index].VendorGuid))) {
+        (CompareGuid (VendorGuid, mMorVariableType[Index].VendorGuid)))
+    {
       return TRUE;
     }
   }
+
   return FALSE;
 }
 
@@ -84,14 +91,16 @@ IsAnyMorVariable (
 **/
 BOOLEAN
 IsMorLockVariable (
-  IN CHAR16                                 *VariableName,
-  IN EFI_GUID                               *VendorGuid
+  IN CHAR16    *VariableName,
+  IN EFI_GUID  *VendorGuid
   )
 {
   if ((StrCmp (VariableName, MEMORY_OVERWRITE_REQUEST_CONTROL_LOCK_NAME) == 0) &&
-      (CompareGuid (VendorGuid, &gEfiMemoryOverwriteRequestControlLockGuid))) {
+      (CompareGuid (VendorGuid, &gEfiMemoryOverwriteRequestControlLockGuid)))
+  {
     return TRUE;
   }
+
   return FALSE;
 }
 
@@ -122,13 +131,13 @@ SetMorLockVariable (
   EFI_STATUS  Status;
 
   mMorLockPassThru = TRUE;
-  Status = VariableServiceSetVariable (
-             MEMORY_OVERWRITE_REQUEST_CONTROL_LOCK_NAME,
-             &gEfiMemoryOverwriteRequestControlLockGuid,
-             EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
-             sizeof(Data),
-             &Data
-             );
+  Status           = VariableServiceSetVariable (
+                       MEMORY_OVERWRITE_REQUEST_CONTROL_LOCK_NAME,
+                       &gEfiMemoryOverwriteRequestControlLockGuid,
+                       EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
+                       sizeof (Data),
+                       &Data
+                       );
   mMorLockPassThru = FALSE;
   return Status;
 }
@@ -153,11 +162,11 @@ SetMorLockVariable (
 **/
 EFI_STATUS
 SetVariableCheckHandlerMorLock (
-  IN CHAR16     *VariableName,
-  IN EFI_GUID   *VendorGuid,
-  IN UINT32     Attributes,
-  IN UINTN      DataSize,
-  IN VOID       *Data
+  IN CHAR16    *VariableName,
+  IN EFI_GUID  *VendorGuid,
+  IN UINT32    Attributes,
+  IN UINTN     DataSize,
+  IN VOID      *Data
   )
 {
   EFI_STATUS  Status;
@@ -165,7 +174,7 @@ SetVariableCheckHandlerMorLock (
   //
   // Basic Check
   //
-  if (Attributes == 0 || DataSize == 0 || Data == NULL) {
+  if ((Attributes == 0) || (DataSize == 0) || (Data == NULL)) {
     //
     // Permit deletion for passthru request, deny it otherwise.
     //
@@ -173,7 +182,8 @@ SetVariableCheckHandlerMorLock (
   }
 
   if ((Attributes != (EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS)) ||
-      ((DataSize != MOR_LOCK_V1_SIZE) && (DataSize != MOR_LOCK_V2_KEY_SIZE))) {
+      ((DataSize != MOR_LOCK_V1_SIZE) && (DataSize != MOR_LOCK_V2_KEY_SIZE)))
+  {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -240,7 +250,7 @@ SetVariableCheckHandlerMorLock (
       // Need set here because the data value on flash is different
       //
       Status = SetMorLockVariable (MOR_LOCK_DATA_LOCKED_WITH_KEY);
-      if (EFI_ERROR(Status)) {
+      if (EFI_ERROR (Status)) {
         //
         // SetVar fail, do not provision the key
         //
@@ -268,6 +278,7 @@ SetVariableCheckHandlerMorLock (
     if (mMorLockKeyEmpty || (DataSize != MOR_LOCK_V2_KEY_SIZE)) {
       return EFI_ACCESS_DENIED;
     }
+
     if ((CompareMem (Data, mMorLockKey, MOR_LOCK_V2_KEY_SIZE) == 0)) {
       //
       // Key match - unlock
@@ -286,9 +297,9 @@ SetVariableCheckHandlerMorLock (
         //
         // Unlock Success
         //
-        mMorLockState = MorLockStateUnlocked;
+        mMorLockState    = MorLockStateUnlocked;
         mMorLockKeyEmpty = TRUE;
-        ZeroMem (mMorLockKey, sizeof(mMorLockKey));
+        ZeroMem (mMorLockKey, sizeof (mMorLockKey));
         //
         // return EFI_ALREADY_STARTED to skip variable set.
         //
@@ -298,9 +309,14 @@ SetVariableCheckHandlerMorLock (
       //
       // Key mismatch - Prevent Dictionary Attack
       //
-      mMorLockState = MorLockStateLocked;
+      mMorLockState    = MorLockStateLocked;
       mMorLockKeyEmpty = TRUE;
-      ZeroMem (mMorLockKey, sizeof(mMorLockKey));
+      ZeroMem (mMorLockKey, sizeof (mMorLockKey));
+      //
+      // Update value to reflect locked without key
+      //
+      Status = SetMorLockVariable (MOR_LOCK_DATA_LOCKED_WITHOUT_KEY);
+      ASSERT_EFI_ERROR (Status);
       return EFI_ACCESS_DENIED;
     }
   }
@@ -327,17 +343,22 @@ SetVariableCheckHandlerMorLock (
 **/
 EFI_STATUS
 SetVariableCheckHandlerMor (
-  IN CHAR16     *VariableName,
-  IN EFI_GUID   *VendorGuid,
-  IN UINT32     Attributes,
-  IN UINTN      DataSize,
-  IN VOID       *Data
+  IN CHAR16    *VariableName,
+  IN EFI_GUID  *VendorGuid,
+  IN UINT32    Attributes,
+  IN UINTN     DataSize,
+  IN VOID      *Data
   )
 {
   //
   // do not handle non-MOR variable
   //
   if (!IsAnyMorVariable (VariableName, VendorGuid)) {
+    return EFI_SUCCESS;
+  }
+
+  // Permit deletion when policy is disabled.
+  if (!IsVariablePolicyEnabled () && ((Attributes == 0) || (DataSize == 0))) {
     return EFI_SUCCESS;
   }
 
@@ -369,16 +390,19 @@ SetVariableCheckHandlerMor (
   // Basic Check
   //
   if ((Attributes != (EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS)) ||
-      (DataSize != sizeof(UINT8)) ||
-      (Data == NULL)) {
+      (DataSize != sizeof (UINT8)) ||
+      (Data == NULL))
+  {
     return EFI_INVALID_PARAMETER;
   }
+
   if (mMorLockState == MorLockStateLocked) {
     //
     // If lock, deny access
     //
     return EFI_ACCESS_DENIED;
   }
+
   //
   // grant access
   //
@@ -410,8 +434,10 @@ MorLockInitAtEndOfDxe (
   VOID
   )
 {
-  UINTN      MorSize;
-  EFI_STATUS MorStatus;
+  UINTN                  MorSize;
+  EFI_STATUS             MorStatus;
+  EFI_STATUS             Status;
+  VARIABLE_POLICY_ENTRY  *NewPolicy;
 
   if (!mMorLockInitializationRequired) {
     //
@@ -425,7 +451,7 @@ MorLockInitAtEndOfDxe (
   //
   // Check if the MOR variable exists.
   //
-  MorSize = 0;
+  MorSize   = 0;
   MorStatus = VariableServiceGetVariable (
                 MEMORY_OVERWRITE_REQUEST_VARIABLE_NAME,
                 &gEfiMemoryOverwriteControlDataGuid,
@@ -449,7 +475,7 @@ MorLockInitAtEndOfDxe (
     // can be deduced from the absence of the TCG / TCG2 protocols, as edk2's
     // MOR implementation depends on (one of) those protocols.
     //
-    if (VariableHaveTcgProtocols ()) {
+    if (VariableIsMorVariableLegitimate ()) {
       //
       // The MOR variable originates from the platform firmware; set the MOR
       // Control Lock variable to report the locking capability to the OS.
@@ -464,7 +490,7 @@ MorLockInitAtEndOfDxe (
     DEBUG ((
       DEBUG_WARN,
       "%a: deleting unexpected / unsupported variable %g:%s\n",
-      __FUNCTION__,
+      __func__,
       &gEfiMemoryOverwriteControlDataGuid,
       MEMORY_OVERWRITE_REQUEST_VARIABLE_NAME
       ));
@@ -484,11 +510,29 @@ MorLockInitAtEndOfDxe (
   // The MOR variable is absent; the platform firmware does not support it.
   // Lock the variable so that no other module may create it.
   //
-  VariableLockRequestToLock (
-    NULL,                                   // This
-    MEMORY_OVERWRITE_REQUEST_VARIABLE_NAME,
-    &gEfiMemoryOverwriteControlDataGuid
-    );
+  NewPolicy = NULL;
+  Status    = CreateBasicVariablePolicy (
+                &gEfiMemoryOverwriteControlDataGuid,
+                MEMORY_OVERWRITE_REQUEST_VARIABLE_NAME,
+                VARIABLE_POLICY_NO_MIN_SIZE,
+                VARIABLE_POLICY_NO_MAX_SIZE,
+                VARIABLE_POLICY_NO_MUST_ATTR,
+                VARIABLE_POLICY_NO_CANT_ATTR,
+                VARIABLE_POLICY_TYPE_LOCK_NOW,
+                &NewPolicy
+                );
+  if (!EFI_ERROR (Status)) {
+    Status = RegisterVariablePolicy (NewPolicy);
+  }
+
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a - Failed to lock variable %s! %r\n", __func__, MEMORY_OVERWRITE_REQUEST_VARIABLE_NAME, Status));
+    ASSERT_EFI_ERROR (Status);
+  }
+
+  if (NewPolicy != NULL) {
+    FreePool (NewPolicy);
+  }
 
   //
   // Delete the MOR Control Lock variable too (should it exists for some
@@ -504,9 +548,27 @@ MorLockInitAtEndOfDxe (
     );
   mMorLockPassThru = FALSE;
 
-  VariableLockRequestToLock (
-    NULL,                                       // This
-    MEMORY_OVERWRITE_REQUEST_CONTROL_LOCK_NAME,
-    &gEfiMemoryOverwriteRequestControlLockGuid
-    );
+  NewPolicy = NULL;
+  Status    = CreateBasicVariablePolicy (
+                &gEfiMemoryOverwriteRequestControlLockGuid,
+                MEMORY_OVERWRITE_REQUEST_CONTROL_LOCK_NAME,
+                VARIABLE_POLICY_NO_MIN_SIZE,
+                VARIABLE_POLICY_NO_MAX_SIZE,
+                VARIABLE_POLICY_NO_MUST_ATTR,
+                VARIABLE_POLICY_NO_CANT_ATTR,
+                VARIABLE_POLICY_TYPE_LOCK_NOW,
+                &NewPolicy
+                );
+  if (!EFI_ERROR (Status)) {
+    Status = RegisterVariablePolicy (NewPolicy);
+  }
+
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a - Failed to lock variable %s! %r\n", __func__, MEMORY_OVERWRITE_REQUEST_CONTROL_LOCK_NAME, Status));
+    ASSERT_EFI_ERROR (Status);
+  }
+
+  if (NewPolicy != NULL) {
+    FreePool (NewPolicy);
+  }
 }

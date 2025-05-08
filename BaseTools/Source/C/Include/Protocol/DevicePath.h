@@ -14,7 +14,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define __EFI_DEVICE_PATH_H__
 
 #include <Guid/PcAnsi.h>
-#include <IndustryStandard/Acpi3_0.h>
+#include <IndustryStandard/Acpi30.h>
 #include <IndustryStandard/Bluetooth.h>
 
 ///
@@ -718,6 +718,18 @@ typedef struct {
   ///
   UINT8                           StopBits;
 } UART_DEVICE_PATH;
+
+///
+/// NVDIMM Namespace Device Path SubType.
+///
+#define NVDIMM_NAMESPACE_DP               0x20
+typedef struct {
+  EFI_DEVICE_PATH_PROTOCOL        Header;
+  ///
+  /// Namespace unique label identifier UUID.
+  ///
+  EFI_GUID Uuid;
+} NVDIMM_NAMESPACE_DEVICE_PATH;
 
 //
 // Use VENDOR_DEVICE_PATH struct

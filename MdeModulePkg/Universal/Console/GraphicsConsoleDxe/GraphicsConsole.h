@@ -29,17 +29,16 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Protocol/HiiFont.h>
 #include <Protocol/HiiDatabase.h>
 
-
 extern EFI_COMPONENT_NAME_PROTOCOL   gGraphicsConsoleComponentName;
 extern EFI_COMPONENT_NAME2_PROTOCOL  gGraphicsConsoleComponentName2;
 extern EFI_DRIVER_BINDING_PROTOCOL   gGraphicsConsoleDriverBinding;
 extern EFI_NARROW_GLYPH              gUsStdNarrowGlyphData[];
 
-extern UINT32 mNarrowFontSize;
+extern UINT32  mNarrowFontSize;
 
 typedef union {
-  EFI_NARROW_GLYPH  NarrowGlyph;
-  EFI_WIDE_GLYPH    WideGlyph;
+  EFI_NARROW_GLYPH    NarrowGlyph;
+  EFI_WIDE_GLYPH      WideGlyph;
 } GLYPH_UNION;
 
 //
@@ -48,32 +47,32 @@ typedef union {
 #define GRAPHICS_CONSOLE_DEV_SIGNATURE  SIGNATURE_32 ('g', 's', 't', 'o')
 
 typedef struct {
-  UINTN   Columns;
-  UINTN   Rows;
-  INTN    DeltaX;
-  INTN    DeltaY;
-  UINT32  GopWidth;
-  UINT32  GopHeight;
-  UINT32  GopModeNumber;
+  UINTN     Columns;
+  UINTN     Rows;
+  INTN      DeltaX;
+  INTN      DeltaY;
+  UINT32    GopWidth;
+  UINT32    GopHeight;
+  UINT32    GopModeNumber;
 } GRAPHICS_CONSOLE_MODE_DATA;
 
 typedef struct {
-  UINTN                            Signature;
-  EFI_GRAPHICS_OUTPUT_PROTOCOL     *GraphicsOutput;
-  EFI_UGA_DRAW_PROTOCOL            *UgaDraw;
-  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  SimpleTextOutput;
-  EFI_SIMPLE_TEXT_OUTPUT_MODE      SimpleTextOutputMode;
-  GRAPHICS_CONSOLE_MODE_DATA       *ModeData;
-  EFI_GRAPHICS_OUTPUT_BLT_PIXEL    *LineBuffer;
+  UINTN                              Signature;
+  EFI_GRAPHICS_OUTPUT_PROTOCOL       *GraphicsOutput;
+  EFI_UGA_DRAW_PROTOCOL              *UgaDraw;
+  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL    SimpleTextOutput;
+  EFI_SIMPLE_TEXT_OUTPUT_MODE        SimpleTextOutputMode;
+  GRAPHICS_CONSOLE_MODE_DATA         *ModeData;
+  EFI_GRAPHICS_OUTPUT_BLT_PIXEL      *LineBuffer;
 } GRAPHICS_CONSOLE_DEV;
 
 #define GRAPHICS_CONSOLE_CON_OUT_DEV_FROM_THIS(a) \
   CR (a, GRAPHICS_CONSOLE_DEV, SimpleTextOutput, GRAPHICS_CONSOLE_DEV_SIGNATURE)
 
-
 //
 // EFI Component Name Functions
 //
+
 /**
   Retrieves a Unicode string that is the user readable name of the driver.
 
@@ -120,7 +119,6 @@ GraphicsConsoleComponentNameGetDriverName (
   IN  CHAR8                        *Language,
   OUT CHAR16                       **DriverName
   );
-
 
 /**
   Retrieves a Unicode string that is the user readable name of the controller
@@ -193,19 +191,18 @@ GraphicsConsoleComponentNameGetDriverName (
 EFI_STATUS
 EFIAPI
 GraphicsConsoleComponentNameGetControllerName (
-  IN  EFI_COMPONENT_NAME_PROTOCOL                     *This,
-  IN  EFI_HANDLE                                      ControllerHandle,
-  IN  EFI_HANDLE                                      ChildHandle        OPTIONAL,
-  IN  CHAR8                                           *Language,
-  OUT CHAR16                                          **ControllerName
+  IN  EFI_COMPONENT_NAME_PROTOCOL  *This,
+  IN  EFI_HANDLE                   ControllerHandle,
+  IN  EFI_HANDLE                   ChildHandle        OPTIONAL,
+  IN  CHAR8                        *Language,
+  OUT CHAR16                       **ControllerName
   );
-
 
 /**
   Reset the text output device hardware and optionally run diagnostics.
 
   Implements SIMPLE_TEXT_OUTPUT.Reset().
-  If ExtendeVerification is TRUE, then perform dependent Graphics Console
+  If ExtendedVerification is TRUE, then perform dependent Graphics Console
   device reset, and set display mode to mode 0.
   If ExtendedVerification is FALSE, only set display mode to mode 0.
 
@@ -222,8 +219,8 @@ GraphicsConsoleComponentNameGetControllerName (
 EFI_STATUS
 EFIAPI
 GraphicsConsoleConOutReset (
-  IN  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL    *This,
-  IN  BOOLEAN                            ExtendedVerification
+  IN  EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL  *This,
+  IN  BOOLEAN                          ExtendedVerification
   );
 
 /**
@@ -286,7 +283,7 @@ GraphicsConsoleConOutTestString (
   supports
 
   Implements SIMPLE_TEXT_OUTPUT.QueryMode().
-  It returnes information for an available text mode that the Graphics Console supports.
+  It returns information for an available text mode that the Graphics Console supports.
   In this driver,we only support text mode 80x25, which is defined as mode 0.
 
   @param  This                  Protocol instance pointer.
@@ -306,7 +303,6 @@ GraphicsConsoleConOutQueryMode (
   OUT UINTN                            *Columns,
   OUT UINTN                            *Rows
   );
-
 
 /**
   Sets the output device(s) to a specified mode.
@@ -399,7 +395,6 @@ GraphicsConsoleConOutSetCursorPosition (
   IN  UINTN                            Row
   );
 
-
 /**
   Makes the cursor visible or invisible.
 
@@ -422,7 +417,7 @@ GraphicsConsoleConOutEnableCursor (
 /**
   Test to see if Graphics Console could be supported on the Controller.
 
-  Graphics Console could be supported if Graphics Output Protocol or UGA Draw
+  Graphics Console could be supported if Graphics Output Protocol or UGADraw
   Protocol exists on the Controller. (UGA Draw Protocol could be skipped
   if PcdUgaConsumeSupport is set to FALSE.)
 
@@ -438,11 +433,10 @@ GraphicsConsoleConOutEnableCursor (
 EFI_STATUS
 EFIAPI
 GraphicsConsoleControllerDriverSupported (
-  IN EFI_DRIVER_BINDING_PROTOCOL    *This,
-  IN EFI_HANDLE                     Controller,
-  IN EFI_DEVICE_PATH_PROTOCOL       *RemainingDevicePath
+  IN EFI_DRIVER_BINDING_PROTOCOL  *This,
+  IN EFI_HANDLE                   Controller,
+  IN EFI_DEVICE_PATH_PROTOCOL     *RemainingDevicePath
   );
-
 
 /**
   Start this driver on Controller by opening Graphics Output protocol or
@@ -461,9 +455,9 @@ GraphicsConsoleControllerDriverSupported (
 EFI_STATUS
 EFIAPI
 GraphicsConsoleControllerDriverStart (
-  IN EFI_DRIVER_BINDING_PROTOCOL    *This,
-  IN EFI_HANDLE                     Controller,
-  IN EFI_DEVICE_PATH_PROTOCOL       *RemainingDevicePath
+  IN EFI_DRIVER_BINDING_PROTOCOL  *This,
+  IN EFI_HANDLE                   Controller,
+  IN EFI_DEVICE_PATH_PROTOCOL     *RemainingDevicePath
   );
 
 /**
@@ -487,12 +481,11 @@ GraphicsConsoleControllerDriverStart (
 EFI_STATUS
 EFIAPI
 GraphicsConsoleControllerDriverStop (
-  IN  EFI_DRIVER_BINDING_PROTOCOL    *This,
-  IN  EFI_HANDLE                     Controller,
-  IN  UINTN                          NumberOfChildren,
-  IN  EFI_HANDLE                     *ChildHandleBuffer
+  IN  EFI_DRIVER_BINDING_PROTOCOL  *This,
+  IN  EFI_HANDLE                   Controller,
+  IN  UINTN                        NumberOfChildren,
+  IN  EFI_HANDLE                   *ChildHandleBuffer
   );
-
 
 /**
   Locate HII Database protocol and HII Font protocol.
@@ -508,9 +501,8 @@ EfiLocateHiiProtocol (
   VOID
   );
 
-
 /**
-  Gets Graphics Console devcie's foreground color and background color.
+  Gets Graphics Console device's foreground color and background color.
 
   @param  This                  Protocol instance pointer.
   @param  Foreground            Returned text foreground color.
@@ -586,9 +578,9 @@ FlushCursor (
 EFI_STATUS
 CheckModeSupported (
   EFI_GRAPHICS_OUTPUT_PROTOCOL  *GraphicsOutput,
-  IN  UINT32  HorizontalResolution,
-  IN  UINT32  VerticalResolution,
-  OUT UINT32  *CurrentModeNumber
+  IN  UINT32                    HorizontalResolution,
+  IN  UINT32                    VerticalResolution,
+  OUT UINT32                    *CurrentModeNumber
   );
 
 #endif

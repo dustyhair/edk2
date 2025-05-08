@@ -1,7 +1,7 @@
 /** @file
 
   Copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
-  Copyright (c) 2013 - 2014, ARM Ltd. All rights reserved.<BR>
+  Copyright (c) 2013 - 2021, Arm Limited. All rights reserved.<BR>
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
@@ -23,9 +23,9 @@ SemihostConnectionSupported (
 
 RETURN_STATUS
 SemihostFileOpen (
-  IN  CHAR8  *FileName,
-  IN  UINT32 Mode,
-  OUT UINTN  *FileHandle
+  IN  CHAR8   *FileName,
+  IN  UINT32  Mode,
+  OUT UINTN   *FileHandle
   )
 {
   SEMIHOST_FILE_OPEN_BLOCK  OpenBlock;
@@ -40,11 +40,11 @@ SemihostFileOpen (
     FileName++;
   }
 
-  OpenBlock.FileName    = FileName;
-  OpenBlock.Mode        = Mode;
-  OpenBlock.NameLength  = AsciiStrLen(FileName);
+  OpenBlock.FileName   = FileName;
+  OpenBlock.Mode       = Mode;
+  OpenBlock.NameLength = AsciiStrLen (FileName);
 
-  Result = Semihost_SYS_OPEN(&OpenBlock);
+  Result = SEMIHOST_SYS_OPEN (&OpenBlock);
 
   if (Result == -1) {
     return RETURN_NOT_FOUND;
@@ -66,7 +66,7 @@ SemihostFileSeek (
   SeekBlock.Handle   = FileHandle;
   SeekBlock.Location = Offset;
 
-  Result = Semihost_SYS_SEEK(&SeekBlock);
+  Result = SEMIHOST_SYS_SEEK (&SeekBlock);
 
   // Semihosting does not behave as documented. It returns the offset on
   // success.
@@ -95,7 +95,7 @@ SemihostFileRead (
   ReadBlock.Buffer = Buffer;
   ReadBlock.Length = *Length;
 
-  Result = Semihost_SYS_READ(&ReadBlock);
+  Result = SEMIHOST_SYS_READ (&ReadBlock);
 
   if ((*Length != 0) && (Result == *Length)) {
     return RETURN_ABORTED;
@@ -122,12 +122,13 @@ SemihostFileWrite (
   WriteBlock.Buffer = Buffer;
   WriteBlock.Length = *Length;
 
-  *Length = Semihost_SYS_WRITE(&WriteBlock);
+  *Length = SEMIHOST_SYS_WRITE (&WriteBlock);
 
-  if (*Length != 0)
+  if (*Length != 0) {
     return RETURN_ABORTED;
-  else
+  } else {
     return RETURN_SUCCESS;
+  }
 }
 
 RETURN_STATUS
@@ -135,9 +136,7 @@ SemihostFileClose (
   IN UINTN  FileHandle
   )
 {
-  INT32 Result = Semihost_SYS_CLOSE(&FileHandle);
-
-  if (Result == -1) {
+  if (SEMIHOST_SYS_CLOSE (&FileHandle) == -1) {
     return RETURN_INVALID_PARAMETER;
   } else {
     return RETURN_SUCCESS;
@@ -150,13 +149,13 @@ SemihostFileLength (
   OUT UINTN  *Length
   )
 {
-  INT32       Result;
+  INT32  Result;
 
   if (Length == NULL) {
     return RETURN_INVALID_PARAMETER;
   }
 
-  Result = Semihost_SYS_FLEN(&FileHandle);
+  Result = SEMIHOST_SYS_FLEN (&FileHandle);
 
   if (Result == -1) {
     return RETURN_ABORTED;
@@ -180,7 +179,7 @@ SemihostFileLength (
 
 **/
 RETURN_STATUS
-SemihostFileTmpName(
+SemihostFileTmpName (
   OUT  VOID   *Buffer,
   IN   UINT8  Identifier,
   IN   UINTN  Length
@@ -197,18 +196,18 @@ SemihostFileTmpName(
   TmpNameBlock.Identifier = Identifier;
   TmpNameBlock.Length     = Length;
 
-  Result = Semihost_SYS_TMPNAME (&TmpNameBlock);
+  Result = SEMIHOST_SYS_TMPNAME (&TmpNameBlock);
 
   if (Result != 0) {
-    return  RETURN_ABORTED;
+    return RETURN_ABORTED;
   } else {
-    return  RETURN_SUCCESS;
+    return RETURN_SUCCESS;
   }
 }
 
 RETURN_STATUS
 SemihostFileRemove (
-  IN CHAR8 *FileName
+  IN CHAR8  *FileName
   )
 {
   SEMIHOST_FILE_REMOVE_BLOCK  RemoveBlock;
@@ -219,10 +218,10 @@ SemihostFileRemove (
     FileName++;
   }
 
-  RemoveBlock.FileName    = FileName;
-  RemoveBlock.NameLength  = AsciiStrLen(FileName);
+  RemoveBlock.FileName   = FileName;
+  RemoveBlock.NameLength = AsciiStrLen (FileName);
 
-  Result = Semihost_SYS_REMOVE(&RemoveBlock);
+  Result = SEMIHOST_SYS_REMOVE (&RemoveBlock);
 
   if (Result == 0) {
     return RETURN_SUCCESS;
@@ -243,7 +242,7 @@ SemihostFileRemove (
 
 **/
 RETURN_STATUS
-SemihostFileRename(
+SemihostFileRename (
   IN  CHAR8  *FileName,
   IN  CHAR8  *NewFileName
   )
@@ -260,12 +259,12 @@ SemihostFileRename(
   RenameBlock.NewFileName       = NewFileName;
   RenameBlock.NewFileNameLength = AsciiStrLen (NewFileName);
 
-  Result = Semihost_SYS_RENAME (&RenameBlock);
+  Result = SEMIHOST_SYS_RENAME (&RenameBlock);
 
   if (Result != 0) {
-    return  RETURN_ABORTED;
+    return RETURN_ABORTED;
   } else {
-    return  RETURN_SUCCESS;
+    return RETURN_SUCCESS;
   }
 }
 
@@ -274,34 +273,34 @@ SemihostReadCharacter (
   VOID
   )
 {
-  return Semihost_SYS_READC();
+  return SEMIHOST_SYS_READC ();
 }
 
 VOID
 SemihostWriteCharacter (
-  IN CHAR8 Character
+  IN CHAR8  Character
   )
 {
-  Semihost_SYS_WRITEC(&Character);
+  SEMIHOST_SYS_WRITEC (&Character);
 }
 
 VOID
 SemihostWriteString (
-  IN CHAR8 *String
+  IN CHAR8  *String
   )
 {
-  Semihost_SYS_WRITE0(String);
+  SEMIHOST_SYS_WRITE0 (String);
 }
 
 UINT32
 SemihostSystem (
-  IN CHAR8 *CommandLine
+  IN CHAR8  *CommandLine
   )
 {
-  SEMIHOST_SYSTEM_BLOCK SystemBlock;
+  SEMIHOST_SYSTEM_BLOCK  SystemBlock;
 
   SystemBlock.CommandLine   = CommandLine;
-  SystemBlock.CommandLength = AsciiStrLen(CommandLine);
+  SystemBlock.CommandLength = AsciiStrLen (CommandLine);
 
-  return Semihost_SYS_SYSTEM(&SystemBlock);
+  return SEMIHOST_SYS_SYSTEM (&SystemBlock);
 }

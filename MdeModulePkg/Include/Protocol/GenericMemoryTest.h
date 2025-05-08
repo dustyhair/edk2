@@ -12,7 +12,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define EFI_GENERIC_MEMORY_TEST_PROTOCOL_GUID  \
   { 0x309de7f1, 0x7f5e, 0x4ace, {0xb4, 0x9c, 0x53, 0x1b, 0xe5, 0xaa, 0x95, 0xef} }
 
-typedef struct _EFI_GENERIC_MEMORY_TEST_PROTOCOL  EFI_GENERIC_MEMORY_TEST_PROTOCOL;
+typedef struct _EFI_GENERIC_MEMORY_TEST_PROTOCOL EFI_GENERIC_MEMORY_TEST_PROTOCOL;
 
 ///
 /// Memory test coverage level.
@@ -25,7 +25,6 @@ typedef enum {
   EXTENSIVE,
   MAXLEVEL
 } EXTENDMEM_COVERAGE_LEVEL;
-
 
 /**
   Initialize the generic memory test.
@@ -46,7 +45,6 @@ EFI_STATUS
   OUT BOOLEAN                                  *RequireSoftECCInit
   );
 
-
 /**
   Perform the memory test.
 
@@ -54,12 +52,12 @@ EFI_STATUS
   @param  TestedMemorySize    Return the tested extended memory size.
   @param  TotalMemorySize     Return the whole system physical memory size.
                               The total memory size does not include memory in a slot with a disabled DIMM.
-  @param  ErrorOut            TRUE if the memory error occured.
+  @param  ErrorOut            TRUE if the memory error occurred.
   @param  IfTestAbort         Indicates that the user pressed "ESC" to skip the memory test.
 
   @retval EFI_SUCCESS         One block of memory passed the test.
   @retval EFI_NOT_FOUND       All memory blocks have already been tested.
-  @retval EFI_DEVICE_ERROR    Memory device error occured, and no agent can handle it.
+  @retval EFI_DEVICE_ERROR    Memory device error occurred, and no agent can handle it.
 
 **/
 typedef
@@ -71,7 +69,6 @@ EFI_STATUS
   OUT BOOLEAN                                  *ErrorOut,
   IN BOOLEAN                                   IfTestAbort
   );
-
 
 /**
   Finish the memory test.
@@ -108,13 +105,12 @@ EFI_STATUS
   );
 
 struct _EFI_GENERIC_MEMORY_TEST_PROTOCOL {
-  EFI_MEMORY_TEST_INIT              MemoryTestInit;
-  EFI_PERFORM_MEMORY_TEST           PerformMemoryTest;
-  EFI_MEMORY_TEST_FINISHED          Finished;
-  EFI_MEMORY_TEST_COMPATIBLE_RANGE  CompatibleRangeTest;
+  EFI_MEMORY_TEST_INIT                MemoryTestInit;
+  EFI_PERFORM_MEMORY_TEST             PerformMemoryTest;
+  EFI_MEMORY_TEST_FINISHED            Finished;
+  EFI_MEMORY_TEST_COMPATIBLE_RANGE    CompatibleRangeTest;
 };
 
-extern EFI_GUID gEfiGenericMemTestProtocolGuid;
+extern EFI_GUID  gEfiGenericMemTestProtocolGuid;
 
 #endif
-

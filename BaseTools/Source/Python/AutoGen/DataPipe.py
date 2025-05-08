@@ -72,9 +72,10 @@ class MemoryDataPipe(DataPipe):
         #Platform Module Pcds
         ModulePcds = {}
         for m in PlatformInfo.Platform.Modules:
-            m_pcds =  PlatformInfo.Platform.Modules[m].Pcds
+            module = PlatformInfo.Platform.Modules[m]
+            m_pcds =  module.Pcds
             if m_pcds:
-                ModulePcds[(m.File,m.Root,m.Arch)] = [PCD_DATA(
+                ModulePcds[module.Guid] = [PCD_DATA(
             pcd.TokenCName,pcd.TokenSpaceGuidCName,pcd.Type,
             pcd.DatumType,pcd.SkuInfoList,pcd.DefaultValue,
             pcd.MaxDatumSize,pcd.UserDefinedDefaultStoresFlag,pcd.validateranges,
@@ -147,6 +148,8 @@ class MemoryDataPipe(DataPipe):
 
         self.DataContainer = {"CL_defines": GlobalData.gCommandLineDefines}
 
+        self.DataContainer = {"gCommandMaxLength": GlobalData.gCommandMaxLength}
+
         self.DataContainer = {"Env_Var": {k:v for k, v in os.environ.items()}}
 
         self.DataContainer = {"PackageList": [(dec.MetaFile,dec.Arch) for dec in PlatformInfo.PackageList]}
@@ -159,8 +162,12 @@ class MemoryDataPipe(DataPipe):
 
         self.DataContainer = {"LogLevel": EdkLogger.GetLevel()}
 
+        self.DataContainer = {"UseHashCache":GlobalData.gUseHashCache}
+
         self.DataContainer = {"BinCacheSource":GlobalData.gBinCacheSource}
 
         self.DataContainer = {"BinCacheDest":GlobalData.gBinCacheDest}
 
         self.DataContainer = {"EnableGenfdsMultiThread":GlobalData.gEnableGenfdsMultiThread}
+
+        self.DataContainer = {"gPlatformFinalPcds":GlobalData.gPlatformFinalPcds}

@@ -3,8 +3,8 @@
   image stored in a firmware device with platform and firmware device specific
   information provided through PCDs and libraries.
 
-  Copyright (c) 2016, Microsoft Corporation. All rights reserved.<BR>
-  Copyright (c) 2018 - 2019, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) Microsoft Corporation.<BR>
+  Copyright (c) 2018 - 2021, Intel Corporation. All rights reserved.<BR>
 
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
@@ -28,11 +28,16 @@
 #include <Library/FmpDeviceLib.h>
 #include <Library/FmpPayloadHeaderLib.h>
 #include <Library/CapsuleUpdatePolicyLib.h>
+#include <Library/FmpDependencyLib.h>
+#include <Library/FmpDependencyCheckLib.h>
+#include <Library/FmpDependencyDeviceLib.h>
 #include <Protocol/FirmwareManagement.h>
 #include <Protocol/FirmwareManagementProgress.h>
-#include <Protocol/VariableLock.h>
 #include <Guid/SystemResourceTable.h>
 #include <Guid/EventGroup.h>
+#include <LastAttemptStatus.h>
+#include <FmpLastAttemptStatus.h>
+#include <Library/VariablePolicyHelperLib.h>
 
 #define VERSION_STRING_NOT_SUPPORTED  L"VERSION STRING NOT SUPPORTED"
 #define VERSION_STRING_NOT_AVAILABLE  L"VERSION STRING NOT AVAILABLE"
@@ -40,18 +45,18 @@
 ///
 ///
 ///
-#define FIRMWARE_MANAGEMENT_PRIVATE_DATA_SIGNATURE SIGNATURE_32 ('f','m','p','p')
+#define FIRMWARE_MANAGEMENT_PRIVATE_DATA_SIGNATURE  SIGNATURE_32 ('f','m','p','p')
 
 typedef struct {
-  UINTN                                        Signature;
-  EFI_HANDLE                                   Handle;
-  EFI_FIRMWARE_MANAGEMENT_PROTOCOL             Fmp;
-  BOOLEAN                                      DescriptorPopulated;
-  EFI_FIRMWARE_IMAGE_DESCRIPTOR                Descriptor;
-  CHAR16                                       *ImageIdName;
-  CHAR16                                       *VersionName;
-  BOOLEAN                                      RuntimeVersionSupported;
-  EFI_EVENT                                    FmpDeviceLockEvent;
+  UINTN                               Signature;
+  EFI_HANDLE                          Handle;
+  EFI_FIRMWARE_MANAGEMENT_PROTOCOL    Fmp;
+  BOOLEAN                             DescriptorPopulated;
+  EFI_FIRMWARE_IMAGE_DESCRIPTOR       Descriptor;
+  CHAR16                              *ImageIdName;
+  CHAR16                              *VersionName;
+  BOOLEAN                             RuntimeVersionSupported;
+  EFI_EVENT                           FmpDeviceLockEvent;
   //
   // Indicates if an attempt has been made to lock a
   // FLASH storage device by calling FmpDeviceLock().
@@ -59,13 +64,14 @@ typedef struct {
   // so this variable is set to TRUE even if FmpDeviceLock()
   // returns an error.
   //
-  BOOLEAN                                      FmpDeviceLocked;
-  VOID                                         *FmpDeviceContext;
-  CHAR16                                       *VersionVariableName;
-  CHAR16                                       *LsvVariableName;
-  CHAR16                                       *LastAttemptStatusVariableName;
-  CHAR16                                       *LastAttemptVersionVariableName;
-  CHAR16                                       *FmpStateVariableName;
+  BOOLEAN                             FmpDeviceLocked;
+  VOID                                *FmpDeviceContext;
+  CHAR16                              *VersionVariableName;
+  CHAR16                              *LsvVariableName;
+  CHAR16                              *LastAttemptStatusVariableName;
+  CHAR16                              *LastAttemptVersionVariableName;
+  CHAR16                              *FmpStateVariableName;
+  BOOLEAN                             DependenciesSatisfied;
 } FIRMWARE_MANAGEMENT_PRIVATE_DATA;
 
 ///
@@ -176,7 +182,6 @@ GetTheImage (
   IN OUT VOID                              *Image,
   IN OUT UINTN                             *ImageSize
   );
-
 
 /**
   Checks if the firmware image is valid for the device.

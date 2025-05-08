@@ -728,6 +728,7 @@ typedef struct _EFI_IFR_QUESTION_HEADER {
 #define EFI_IFR_FLAG_READ_ONLY          0x01
 #define EFI_IFR_FLAG_CALLBACK           0x04
 #define EFI_IFR_FLAG_RESET_REQUIRED     0x10
+#define EFI_IFR_FLAG_REST_STYLE         0x20
 #define EFI_IFR_FLAG_RECONNECT_REQUIRED 0x40
 #define EFI_IFR_FLAG_OPTIONS_ONLY       0x80
 
@@ -1555,7 +1556,17 @@ typedef enum {
   EfiKeyF12,
   EfiKeyPrint,
   EfiKeySLck,
-  EfiKeyPause
+  EfiKeyPause,
+  EfiKeyIntl0,
+  EfiKeyIntl1,
+  EfiKeyIntl2,
+  EfiKeyIntl3,
+  EfiKeyIntl4,
+  EfiKeyIntl5,
+  EfiKeyIntl6,
+  EfiKeyIntl7,
+  EfiKeyIntl8,
+  EfiKeyIntl9
 } EFI_KEY;
 
 typedef struct {

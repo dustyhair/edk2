@@ -2,6 +2,7 @@
 # This file is used to be the c coding style checking of ECC tool
 #
 # Copyright (c) 2009 - 2019, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2020, Arm Limited. All rights reserved.<BR>
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 #
 
@@ -42,7 +43,7 @@ def GetArrayPattern():
     return p
 
 def GetTypedefFuncPointerPattern():
-    p = re.compile('[_\w\s]*\([\w\s]*\*+\s*[_\w]+\s*\)\s*\(.*\)', re.DOTALL)
+    p = re.compile(r'[_\w\s]*\([\w\s]*\*+\s*[_\w]+\s*\)\s*\(.*\)', re.DOTALL)
     return p
 
 def GetDB():
@@ -64,7 +65,9 @@ def GetIdType(Str):
     Type = DataClass.MODEL_UNKNOWN
     Str = Str.replace('#', '# ')
     List = Str.split()
-    if List[1] == 'include':
+    if len(List) < 2:
+        pass
+    elif List[1] == 'include':
         Type = DataClass.MODEL_IDENTIFIER_INCLUDE
     elif List[1] == 'define':
         Type = DataClass.MODEL_IDENTIFIER_MACRO_DEFINE
@@ -1557,7 +1560,7 @@ def CheckFuncLayoutLocalVariable(FullFileName):
             continue
 
         for Result in ResultSet:
-            if len(Result[1]) > 0 and 'CONST' not in Result[3]:
+            if len(Result[1]) > 0 and 'CONST' not in Result[3] and 'STATIC' not in Result[3]:
                 PrintErrorMsg(ERROR_C_FUNCTION_LAYOUT_CHECK_NO_INIT_OF_VARIABLE, 'Variable Name: %s' % Result[0], FileTable, Result[2])
 
 def CheckMemberVariableFormat(Name, Value, FileTable, TdId, ModelId):
@@ -2232,7 +2235,7 @@ def CheckDoxygenCommand(FullFileName):
                    """ % (FileTable, DataClass.MODEL_IDENTIFIER_COMMENT, DataClass.MODEL_IDENTIFIER_FUNCTION_HEADER)
     ResultSet = Db.TblFile.Exec(SqlStatement)
     DoxygenCommandList = ['bug', 'todo', 'example', 'file', 'attention', 'param', 'post', 'pre', 'retval',
-                          'return', 'sa', 'since', 'test', 'note', 'par', 'endcode', 'code']
+                          'return', 'sa', 'since', 'test', 'note', 'par', 'endcode', 'code', 'endverbatim', 'verbatim']
     for Result in ResultSet:
         CommentStr = Result[0]
         CommentPartList = CommentStr.split()
@@ -2609,8 +2612,8 @@ def CheckFunctionHeaderConsistentWithDoxygenComment(FuncModifier, FuncHeader, Fu
 
 
             if Tag.find(ParamName) == -1 and ParamName != 'VOID' and ParamName != 'void':
-                ErrorMsgList.append('Line %d : in Comment, <%s> does NOT consistent with parameter name %s ' % (CommentStartLine, (TagPartList[0] + ' ' + TagPartList[1]).replace('\n', '').replace('\r', ''), ParamName))
-                PrintErrorMsg(ERROR_DOXYGEN_CHECK_FUNCTION_HEADER, 'in Comment, <%s> does NOT consistent with parameter name %s ' % ((TagPartList[0] + ' ' + TagPartList[1]).replace('\n', '').replace('\r', ''), ParamName), TableName, CommentId)
+                ErrorMsgList.append('Line %d : in Comment, <%s> is NOT consistent with parameter name %s ' % (CommentStartLine, (TagPartList[0] + ' ' + TagPartList[1]).replace('\n', '').replace('\r', ''), ParamName))
+                PrintErrorMsg(ERROR_DOXYGEN_CHECK_FUNCTION_HEADER, 'in Comment, <%s> is NOT consistent with parameter name %s ' % ((TagPartList[0] + ' ' + TagPartList[1]).replace('\n', '').replace('\r', ''), ParamName), TableName, CommentId)
             Index += 1
 
         if Index < ParamNumber:

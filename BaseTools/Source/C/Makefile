@@ -4,7 +4,9 @@
 # Copyright (c) 2009 - 2018, Intel Corporation. All rights reserved.<BR>
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 #
+!IFNDEF HOST_ARCH
 HOST_ARCH = IA32
+!ENDIF
 
 !INCLUDE Makefiles\ms.common
 
@@ -19,7 +21,6 @@ APPLICATIONS = \
   GenFw \
   GenSec \
   LzmaCompress \
-  Split \
   TianoCompress \
   VolInfo \
   DevicePath

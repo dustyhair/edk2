@@ -1,7 +1,7 @@
 /** @file
   MP initialize support functions for PEI phase.
 
-  Copyright (c) 2016 - 2019, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2016 - 2024, Intel Corporation. All rights reserved.<BR>
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
@@ -9,70 +9,10 @@
 #include "MpLib.h"
 #include <Library/PeiServicesLib.h>
 #include <Guid/S3SmmInitDone.h>
+#include <Guid/EndOfS3Resume.h>
+#include <Ppi/ShadowMicrocode.h>
 
-/**
-  S3 SMM Init Done notification function.
-
-  @param  PeiServices      Indirect reference to the PEI Services Table.
-  @param  NotifyDesc       Address of the notification descriptor data structure.
-  @param  InvokePpi        Address of the PPI that was invoked.
-
-  @retval EFI_SUCCESS      The function completes successfully.
-
-**/
-EFI_STATUS
-EFIAPI
-NotifyOnS3SmmInitDonePpi (
-  IN  EFI_PEI_SERVICES                              **PeiServices,
-  IN  EFI_PEI_NOTIFY_DESCRIPTOR                     *NotifyDesc,
-  IN  VOID                                          *InvokePpi
-  );
-
-
-//
-// Global function
-//
-EFI_PEI_NOTIFY_DESCRIPTOR        mS3SmmInitDoneNotifyDesc = {
-  EFI_PEI_PPI_DESCRIPTOR_NOTIFY_CALLBACK | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST,
-  &gEdkiiS3SmmInitDoneGuid,
-  NotifyOnS3SmmInitDonePpi
-};
-
-/**
-  S3 SMM Init Done notification function.
-
-  @param  PeiServices      Indirect reference to the PEI Services Table.
-  @param  NotifyDesc       Address of the notification descriptor data structure.
-  @param  InvokePpi        Address of the PPI that was invoked.
-
-  @retval EFI_SUCCESS      The function completes successfully.
-
-**/
-EFI_STATUS
-EFIAPI
-NotifyOnS3SmmInitDonePpi (
-  IN  EFI_PEI_SERVICES                              **PeiServices,
-  IN  EFI_PEI_NOTIFY_DESCRIPTOR                     *NotifyDesc,
-  IN  VOID                                          *InvokePpi
-  )
-{
-  CPU_MP_DATA     *CpuMpData;
-
-  CpuMpData = GetCpuMpData ();
-
-  //
-  // PiSmmCpuDxeSmm driver hardcode change the loop mode to HLT mode.
-  // So in this notify function, code need to check the current loop
-  // mode, if it is not HLT mode, code need to change loop mode back
-  // to the original mode.
-  //
-  if (CpuMpData->ApLoopMode != ApInHltLoop) {
-    CpuMpData->WakeUpByInitSipiSipi = TRUE;
-  }
-
-  return EFI_SUCCESS;
-}
-
+STATIC UINT64  mSevEsPeiWakeupBuffer = BASE_1MB;
 
 /**
   Enable Debug Agent to support source debugging on AP function.
@@ -88,7 +28,7 @@ EnableDebugAgent (
 /**
   Get pointer to CPU MP Data structure.
   For BSP, the pointer is retrieved from HOB.
-  For AP, the structure is just after IDT.
+  For AP, the structure is stored in the top of each AP's stack.
 
   @return  The pointer to CPU MP Data structure.
 **/
@@ -99,16 +39,19 @@ GetCpuMpData (
 {
   CPU_MP_DATA                  *CpuMpData;
   MSR_IA32_APIC_BASE_REGISTER  ApicBaseMsr;
-  IA32_DESCRIPTOR              Idtr;
+  UINTN                        ApTopOfStack;
+  AP_STACK_DATA                *ApStackData;
 
   ApicBaseMsr.Uint64 = AsmReadMsr64 (MSR_IA32_APIC_BASE);
   if (ApicBaseMsr.Bits.BSP == 1) {
     CpuMpData = GetCpuMpDataFromGuidedHob ();
     ASSERT (CpuMpData != NULL);
   } else {
-    AsmReadIdtr (&Idtr);
-    CpuMpData = (CPU_MP_DATA *) (Idtr.Base + Idtr.Limit + 1);
+    ApTopOfStack = ALIGN_VALUE ((UINTN)&ApTopOfStack, (UINTN)PcdGet32 (PcdCpuApStackSize));
+    ApStackData  = (AP_STACK_DATA *)((UINTN)ApTopOfStack- sizeof (AP_STACK_DATA));
+    CpuMpData    = (CPU_MP_DATA *)ApStackData->MpData;
   }
+
   return CpuMpData;
 }
 
@@ -119,17 +62,68 @@ GetCpuMpData (
 **/
 VOID
 SaveCpuMpData (
-  IN CPU_MP_DATA   *CpuMpData
+  IN CPU_MP_DATA  *CpuMpData
   )
 {
-  UINT64           Data64;
+  UINT32              MaxCpusPerHob;
+  UINT32              CpusInHob;
+  UINT64              Data64;
+  UINT32              Index;
+  UINT32              HobBase;
+  CPU_INFO_IN_HOB     *CpuInfoInHob;
+  MP_HAND_OFF         *MpHandOff;
+  MP_HAND_OFF_CONFIG  MpHandOffConfig;
+  UINTN               MpHandOffSize;
+
+  MaxCpusPerHob = (0xFFF8 - sizeof (EFI_HOB_GUID_TYPE) - sizeof (MP_HAND_OFF)) / sizeof (PROCESSOR_HAND_OFF);
+
+  //
+  // When APs are in a state that can be waken up by a store operation to a memory address,
+  // report the MP_HAND_OFF data for DXE to use.
+  //
+  CpuInfoInHob = (CPU_INFO_IN_HOB *)(UINTN)CpuMpData->CpuInfoInHob;
+
+  for (Index = 0; Index < CpuMpData->CpuCount; Index++) {
+    if (Index % MaxCpusPerHob == 0) {
+      HobBase   = Index;
+      CpusInHob = MIN (CpuMpData->CpuCount - HobBase, MaxCpusPerHob);
+
+      MpHandOffSize = sizeof (MP_HAND_OFF) + sizeof (PROCESSOR_HAND_OFF) * CpusInHob;
+      MpHandOff     = (MP_HAND_OFF *)BuildGuidHob (&mMpHandOffGuid, MpHandOffSize);
+      ASSERT (MpHandOff != NULL);
+      ZeroMem (MpHandOff, MpHandOffSize);
+
+      MpHandOff->ProcessorIndex = HobBase;
+      MpHandOff->CpuCount       = CpusInHob;
+    }
+
+    MpHandOff->Info[Index-HobBase].ApicId = CpuInfoInHob[Index].ApicId;
+    MpHandOff->Info[Index-HobBase].Health = CpuInfoInHob[Index].Health;
+    if (CpuMpData->ApLoopMode != ApInHltLoop) {
+      MpHandOff->Info[Index-HobBase].StartupSignalAddress    = (UINT64)(UINTN)CpuMpData->CpuData[Index].StartupApSignal;
+      MpHandOff->Info[Index-HobBase].StartupProcedureAddress = (UINT64)(UINTN)&CpuMpData->CpuData[Index].ApFunction;
+    }
+  }
+
+  ZeroMem (&MpHandOffConfig, sizeof (MpHandOffConfig));
+  if (CpuMpData->ApLoopMode != ApInHltLoop) {
+    MpHandOffConfig.StartupSignalValue    = MP_HAND_OFF_SIGNAL;
+    MpHandOffConfig.WaitLoopExecutionMode = sizeof (VOID *);
+  }
+
+  BuildGuidDataHob (
+    &mMpHandOffConfigGuid,
+    (VOID *)&MpHandOffConfig,
+    sizeof (MpHandOffConfig)
+    );
+
   //
   // Build location of CPU MP DATA buffer in HOB
   //
-  Data64 = (UINT64) (UINTN) CpuMpData;
+  Data64 = (UINT64)(UINTN)CpuMpData;
   BuildGuidDataHob (
     &mCpuInitMpLibHobGuid,
-    (VOID *) &Data64,
+    (VOID *)&Data64,
     sizeof (UINT64)
     );
 }
@@ -145,15 +139,15 @@ SaveCpuMpData (
 **/
 BOOLEAN
 CheckOverlapWithAllocatedBuffer (
-  IN UINT64               WakeupBufferStart,
-  IN UINT64               WakeupBufferEnd
+  IN UINT64  WakeupBufferStart,
+  IN UINT64  WakeupBufferEnd
   )
 {
-  EFI_PEI_HOB_POINTERS      Hob;
-  EFI_HOB_MEMORY_ALLOCATION *MemoryHob;
-  BOOLEAN                   Overlapped;
-  UINT64                    MemoryStart;
-  UINT64                    MemoryEnd;
+  EFI_PEI_HOB_POINTERS       Hob;
+  EFI_HOB_MEMORY_ALLOCATION  *MemoryHob;
+  BOOLEAN                    Overlapped;
+  UINT64                     MemoryStart;
+  UINT64                     MemoryEnd;
 
   Overlapped = FALSE;
   //
@@ -173,8 +167,10 @@ CheckOverlapWithAllocatedBuffer (
         break;
       }
     }
+
     Hob.Raw = GET_NEXT_HOB (Hob);
   }
+
   return Overlapped;
 }
 
@@ -188,12 +184,12 @@ CheckOverlapWithAllocatedBuffer (
 **/
 UINTN
 GetWakeupBuffer (
-  IN UINTN                WakeupBufferSize
+  IN UINTN  WakeupBufferSize
   )
 {
-  EFI_PEI_HOB_POINTERS    Hob;
-  UINT64                  WakeupBufferStart;
-  UINT64                  WakeupBufferEnd;
+  EFI_PEI_HOB_POINTERS  Hob;
+  UINT64                WakeupBufferStart;
+  UINT64                WakeupBufferEnd;
 
   WakeupBufferSize = (WakeupBufferSize + SIZE_4KB - 1) & ~(SIZE_4KB - 1);
 
@@ -213,19 +209,28 @@ GetWakeupBuffer (
             (EFI_RESOURCE_ATTRIBUTE_READ_PROTECTED |
              EFI_RESOURCE_ATTRIBUTE_WRITE_PROTECTED |
              EFI_RESOURCE_ATTRIBUTE_EXECUTION_PROTECTED
-             )) == 0)
-           ) {
+            )) == 0)
+          )
+      {
         //
         // Need memory under 1MB to be collected here
         //
         WakeupBufferEnd = Hob.ResourceDescriptor->PhysicalStart + Hob.ResourceDescriptor->ResourceLength;
-        if (WakeupBufferEnd > BASE_1MB) {
+        if (ConfidentialComputingGuestHas (CCAttrAmdSevEs) &&
+            (WakeupBufferEnd > mSevEsPeiWakeupBuffer))
+        {
+          //
+          // SEV-ES Wakeup buffer should be under 1MB and under any previous one
+          //
+          WakeupBufferEnd = mSevEsPeiWakeupBuffer;
+        } else if (WakeupBufferEnd > BASE_1MB) {
           //
           // Wakeup buffer should be under 1MB
           //
           WakeupBufferEnd = BASE_1MB;
         }
-        while (WakeupBufferEnd > WakeupBufferSize) {
+
+        while (WakeupBufferEnd > (UINT64)WakeupBufferSize) {
           //
           // Wakeup buffer should be aligned on 4KB
           //
@@ -233,6 +238,7 @@ GetWakeupBuffer (
           if (WakeupBufferStart < Hob.ResourceDescriptor->PhysicalStart) {
             break;
           }
+
           if (CheckOverlapWithAllocatedBuffer (WakeupBufferStart, WakeupBufferEnd)) {
             //
             // If this range is overlapped with existing allocated buffer, skip it
@@ -241,19 +247,34 @@ GetWakeupBuffer (
             WakeupBufferEnd -= WakeupBufferSize;
             continue;
           }
-          DEBUG ((DEBUG_INFO, "WakeupBufferStart = %x, WakeupBufferSize = %x\n",
-                               WakeupBufferStart, WakeupBufferSize));
+
+          DEBUG ((
+            DEBUG_INFO,
+            "WakeupBufferStart = %x, WakeupBufferSize = %x\n",
+            WakeupBufferStart,
+            WakeupBufferSize
+            ));
+
+          if (ConfidentialComputingGuestHas (CCAttrAmdSevEs)) {
+            //
+            // Next SEV-ES wakeup buffer allocation must be below this
+            // allocation
+            //
+            mSevEsPeiWakeupBuffer = WakeupBufferStart;
+          }
+
           return (UINTN)WakeupBufferStart;
         }
       }
     }
+
     //
     // Find the next HOB
     //
     Hob.Raw = GET_NEXT_HOB (Hob);
   }
 
-  return (UINTN) -1;
+  return (UINTN)-1;
 }
 
 /**
@@ -269,8 +290,32 @@ GetWakeupBuffer (
   @retval 0       Cannot find free memory below 4GB.
 **/
 UINTN
-GetModeTransitionBuffer (
-  IN UINTN                BufferSize
+AllocateCodeBuffer (
+  IN UINTN  BufferSize
+  )
+{
+  EFI_STATUS            Status;
+  EFI_PHYSICAL_ADDRESS  Address;
+
+  Status = PeiServicesAllocatePages (EfiBootServicesCode, EFI_SIZE_TO_PAGES (BufferSize), &Address);
+  if (EFI_ERROR (Status)) {
+    Address = 0;
+  }
+
+  return (UINTN)Address;
+}
+
+/**
+  Return the address of the SEV-ES AP jump table.
+
+  This buffer is required in order for an SEV-ES guest to transition from
+  UEFI into an OS.
+
+  @return         Return SEV-ES AP jump table buffer
+**/
+UINTN
+GetSevEsAPMemory (
+  VOID
   )
 {
   //
@@ -291,23 +336,120 @@ CheckAndUpdateApsStatus (
 }
 
 /**
+  Build the microcode patch HOB that contains the base address and size of the
+  microcode patch stored in the memory.
+
+  @param[in]  CpuMpData    Pointer to the CPU_MP_DATA structure.
+
+**/
+VOID
+BuildMicrocodeCacheHob (
+  IN CPU_MP_DATA  *CpuMpData
+  )
+{
+  EDKII_MICROCODE_PATCH_HOB  *MicrocodeHob;
+  UINTN                      HobDataLength;
+  UINT32                     Index;
+
+  HobDataLength = sizeof (EDKII_MICROCODE_PATCH_HOB) +
+                  sizeof (UINT64) * CpuMpData->CpuCount;
+
+  MicrocodeHob = AllocatePool (HobDataLength);
+  if (MicrocodeHob == NULL) {
+    ASSERT (FALSE);
+    return;
+  }
+
+  //
+  // Store the information of the memory region that holds the microcode patches.
+  //
+  MicrocodeHob->MicrocodePatchAddress    = CpuMpData->MicrocodePatchAddress;
+  MicrocodeHob->MicrocodePatchRegionSize = CpuMpData->MicrocodePatchRegionSize;
+
+  //
+  // Store the detected microcode patch for each processor as well.
+  //
+  MicrocodeHob->ProcessorCount = CpuMpData->CpuCount;
+  for (Index = 0; Index < CpuMpData->CpuCount; Index++) {
+    if (CpuMpData->CpuData[Index].MicrocodeEntryAddr != 0) {
+      MicrocodeHob->ProcessorSpecificPatchOffset[Index] =
+        CpuMpData->CpuData[Index].MicrocodeEntryAddr - CpuMpData->MicrocodePatchAddress;
+    } else {
+      MicrocodeHob->ProcessorSpecificPatchOffset[Index] = MAX_UINT64;
+    }
+  }
+
+  BuildGuidDataHob (
+    &gEdkiiMicrocodePatchHobGuid,
+    MicrocodeHob,
+    HobDataLength
+    );
+
+  return;
+}
+
+/**
+  S3 SMM Init Done notification function.
+
+  @param  PeiServices      Indirect reference to the PEI Services Table.
+  @param  NotifyDesc       Address of the notification descriptor data structure.
+  @param  InvokePpi        Address of the PPI that was invoked.
+
+  @retval EFI_SUCCESS      The function completes successfully.
+
+**/
+EFI_STATUS
+EFIAPI
+NotifyOnEndOfS3Resume (
+  IN  EFI_PEI_SERVICES           **PeiServices,
+  IN  EFI_PEI_NOTIFY_DESCRIPTOR  *NotifyDesc,
+  IN  VOID                       *InvokePpi
+  )
+{
+  CPU_MP_DATA  *CpuMpData;
+
+  CpuMpData       = GetCpuMpData ();
+  mNumberToFinish = CpuMpData->CpuCount - 1;
+  WakeUpAP (CpuMpData, TRUE, 0, RelocateApLoop, NULL, TRUE);
+  while (mNumberToFinish > 0) {
+    CpuPause ();
+  }
+
+  DEBUG ((DEBUG_INFO, "%a() done!\n", __func__));
+
+  return EFI_SUCCESS;
+}
+
+//
+// Global function
+//
+EFI_PEI_NOTIFY_DESCRIPTOR  mEndOfS3ResumeNotifyDesc = {
+  EFI_PEI_PPI_DESCRIPTOR_NOTIFY_CALLBACK | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST,
+  &gEdkiiEndOfS3ResumeGuid,
+  NotifyOnEndOfS3Resume
+};
+
+/**
   Initialize global data for MP support.
 
   @param[in] CpuMpData  The pointer to CPU MP Data structure.
 **/
 VOID
 InitMpGlobalData (
-  IN CPU_MP_DATA               *CpuMpData
+  IN CPU_MP_DATA  *CpuMpData
   )
 {
   EFI_STATUS  Status;
 
+  BuildMicrocodeCacheHob (CpuMpData);
   SaveCpuMpData (CpuMpData);
+  PrepareApLoopCode (CpuMpData);
 
   ///
   /// Install Notify
   ///
-  Status = PeiServicesNotifyPpi (&mS3SmmInitDoneNotifyDesc);
+
+  Status = PeiServicesNotifyPpi (&mEndOfS3ResumeNotifyDesc);
   ASSERT_EFI_ERROR (Status);
 }
 
@@ -389,12 +531,12 @@ InitMpGlobalData (
 EFI_STATUS
 EFIAPI
 MpInitLibStartupAllAPs (
-  IN  EFI_AP_PROCEDURE          Procedure,
-  IN  BOOLEAN                   SingleThread,
-  IN  EFI_EVENT                 WaitEvent               OPTIONAL,
-  IN  UINTN                     TimeoutInMicroseconds,
-  IN  VOID                      *ProcedureArgument      OPTIONAL,
-  OUT UINTN                     **FailedCpuList         OPTIONAL
+  IN  EFI_AP_PROCEDURE  Procedure,
+  IN  BOOLEAN           SingleThread,
+  IN  EFI_EVENT         WaitEvent               OPTIONAL,
+  IN  UINTN             TimeoutInMicroseconds,
+  IN  VOID              *ProcedureArgument      OPTIONAL,
+  OUT UINTN             **FailedCpuList         OPTIONAL
   )
 {
   if (WaitEvent != NULL) {
@@ -486,12 +628,12 @@ MpInitLibStartupAllAPs (
 EFI_STATUS
 EFIAPI
 MpInitLibStartupThisAP (
-  IN  EFI_AP_PROCEDURE          Procedure,
-  IN  UINTN                     ProcessorNumber,
-  IN  EFI_EVENT                 WaitEvent               OPTIONAL,
-  IN  UINTN                     TimeoutInMicroseconds,
-  IN  VOID                      *ProcedureArgument      OPTIONAL,
-  OUT BOOLEAN                   *Finished               OPTIONAL
+  IN  EFI_AP_PROCEDURE  Procedure,
+  IN  UINTN             ProcessorNumber,
+  IN  EFI_EVENT         WaitEvent               OPTIONAL,
+  IN  UINTN             TimeoutInMicroseconds,
+  IN  VOID              *ProcedureArgument      OPTIONAL,
+  OUT BOOLEAN           *Finished               OPTIONAL
   )
 {
   if (WaitEvent != NULL) {
@@ -537,8 +679,8 @@ MpInitLibStartupThisAP (
 EFI_STATUS
 EFIAPI
 MpInitLibSwitchBSP (
-  IN UINTN                     ProcessorNumber,
-  IN  BOOLEAN                  EnableOldBSP
+  IN UINTN     ProcessorNumber,
+  IN  BOOLEAN  EnableOldBSP
   )
 {
   return SwitchBSPWorker (ProcessorNumber, EnableOldBSP);
@@ -577,12 +719,187 @@ MpInitLibSwitchBSP (
 EFI_STATUS
 EFIAPI
 MpInitLibEnableDisableAP (
-  IN  UINTN                     ProcessorNumber,
-  IN  BOOLEAN                   EnableAP,
-  IN  UINT32                    *HealthFlag OPTIONAL
+  IN  UINTN    ProcessorNumber,
+  IN  BOOLEAN  EnableAP,
+  IN  UINT32   *HealthFlag OPTIONAL
   )
 {
   return EnableDisableApWorker (ProcessorNumber, EnableAP, HealthFlag);
 }
 
+/**
+  This funtion will try to invoke platform specific microcode shadow logic to
+  relocate microcode update patches into memory.
 
+  @param[in, out] CpuMpData  The pointer to CPU MP Data structure.
+
+  @retval EFI_SUCCESS              Shadow microcode success.
+  @retval EFI_OUT_OF_RESOURCES     No enough resource to complete the operation.
+  @retval EFI_UNSUPPORTED          Can't find platform specific microcode shadow
+                                   PPI/Protocol.
+**/
+EFI_STATUS
+PlatformShadowMicrocode (
+  IN OUT CPU_MP_DATA  *CpuMpData
+  )
+{
+  EFI_STATUS                      Status;
+  EDKII_PEI_SHADOW_MICROCODE_PPI  *ShadowMicrocodePpi;
+  UINTN                           CpuCount;
+  EDKII_PEI_MICROCODE_CPU_ID      *MicrocodeCpuId;
+  UINTN                           Index;
+  UINTN                           BufferSize;
+  VOID                            *Buffer;
+
+  Status = PeiServicesLocatePpi (
+             &gEdkiiPeiShadowMicrocodePpiGuid,
+             0,
+             NULL,
+             (VOID **)&ShadowMicrocodePpi
+             );
+  if (EFI_ERROR (Status)) {
+    return EFI_UNSUPPORTED;
+  }
+
+  CpuCount       = CpuMpData->CpuCount;
+  MicrocodeCpuId = (EDKII_PEI_MICROCODE_CPU_ID *)AllocateZeroPool (sizeof (EDKII_PEI_MICROCODE_CPU_ID) * CpuCount);
+  if (MicrocodeCpuId == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  for (Index = 0; Index < CpuMpData->CpuCount; Index++) {
+    MicrocodeCpuId[Index].ProcessorSignature = CpuMpData->CpuData[Index].ProcessorSignature;
+    MicrocodeCpuId[Index].PlatformId         = CpuMpData->CpuData[Index].PlatformId;
+  }
+
+  Status = ShadowMicrocodePpi->ShadowMicrocode (
+                                 ShadowMicrocodePpi,
+                                 CpuCount,
+                                 MicrocodeCpuId,
+                                 &BufferSize,
+                                 &Buffer
+                                 );
+  FreePool (MicrocodeCpuId);
+  if (EFI_ERROR (Status)) {
+    return EFI_NOT_FOUND;
+  }
+
+  CpuMpData->MicrocodePatchAddress    = (UINTN)Buffer;
+  CpuMpData->MicrocodePatchRegionSize = BufferSize;
+
+  DEBUG ((
+    DEBUG_INFO,
+    "%a: Required microcode patches have been loaded at 0x%lx, with size 0x%lx.\n",
+    __func__,
+    CpuMpData->MicrocodePatchAddress,
+    CpuMpData->MicrocodePatchRegionSize
+    ));
+
+  return EFI_SUCCESS;
+}
+
+/**
+  Allocate buffer for ApLoopCode.
+
+  @param[in]      Pages    Number of pages to allocate.
+  @param[in, out] Address  Pointer to the allocated buffer.
+**/
+VOID
+AllocateApLoopCodeBuffer (
+  IN UINTN                     Pages,
+  IN OUT EFI_PHYSICAL_ADDRESS  *Address
+  )
+{
+  EFI_STATUS  Status;
+
+  Status = PeiServicesAllocatePages (EfiACPIMemoryNVS, Pages, Address);
+  if (EFI_ERROR (Status)) {
+    *Address = 0;
+  }
+}
+
+/**
+  Remove Nx protection for the range specific by BaseAddress and Length.
+
+  The PEI implementation uses CpuPageTableLib to change the attribute.
+  The DXE implementation uses gDS to change the attribute.
+
+  @param[in] BaseAddress  BaseAddress of the range.
+  @param[in] Length       Length of the range.
+**/
+VOID
+RemoveNxprotection (
+  IN EFI_PHYSICAL_ADDRESS  BaseAddress,
+  IN UINTN                 Length
+  )
+{
+  EFI_STATUS                  Status;
+  UINTN                       PageTable;
+  EFI_PHYSICAL_ADDRESS        Buffer;
+  UINTN                       BufferSize;
+  IA32_MAP_ATTRIBUTE          MapAttribute;
+  IA32_MAP_ATTRIBUTE          MapMask;
+  PAGING_MODE                 PagingMode;
+  IA32_CR4                    Cr4;
+  BOOLEAN                     Page5LevelSupport;
+  UINT32                      RegEax;
+  BOOLEAN                     Page1GSupport;
+  CPUID_EXTENDED_CPU_SIG_EDX  RegEdx;
+
+  if (sizeof (UINTN) == sizeof (UINT64)) {
+    //
+    // Check Page5Level Support or not.
+    //
+    Cr4.UintN         = AsmReadCr4 ();
+    Page5LevelSupport = (Cr4.Bits.LA57 ? TRUE : FALSE);
+
+    //
+    // Check Page1G Support or not.
+    //
+    Page1GSupport = FALSE;
+    AsmCpuid (CPUID_EXTENDED_FUNCTION, &RegEax, NULL, NULL, NULL);
+    if (RegEax >= CPUID_EXTENDED_CPU_SIG) {
+      AsmCpuid (CPUID_EXTENDED_CPU_SIG, NULL, NULL, NULL, &RegEdx.Uint32);
+      if (RegEdx.Bits.Page1GB != 0) {
+        Page1GSupport = TRUE;
+      }
+    }
+
+    //
+    // Decide Paging Mode according Page5LevelSupport & Page1GSupport.
+    //
+    if (Page5LevelSupport) {
+      PagingMode = Page1GSupport ? Paging5Level1GB : Paging5Level;
+    } else {
+      PagingMode = Page1GSupport ? Paging4Level1GB : Paging4Level;
+    }
+  } else {
+    PagingMode = PagingPae;
+  }
+
+  MapAttribute.Uint64 = 0;
+  MapMask.Uint64      = 0;
+  MapMask.Bits.Nx     = 1;
+  PageTable           = AsmReadCr3 () & PAGING_4K_ADDRESS_MASK_64;
+  BufferSize          = 0;
+
+  //
+  // Get required buffer size for changing the pagetable.
+  //
+  Status = PageTableMap (&PageTable, PagingMode, 0, &BufferSize, BaseAddress, Length, &MapAttribute, &MapMask, NULL);
+  if (Status == EFI_BUFFER_TOO_SMALL) {
+    //
+    // Allocate required Buffer.
+    //
+    Status = PeiServicesAllocatePages (
+               EfiBootServicesData,
+               EFI_SIZE_TO_PAGES (BufferSize),
+               &Buffer
+               );
+    ASSERT_EFI_ERROR (Status);
+    Status = PageTableMap (&PageTable, PagingMode, (VOID *)(UINTN)Buffer, &BufferSize, BaseAddress, Length, &MapAttribute, &MapMask, NULL);
+  }
+
+  ASSERT_EFI_ERROR (Status);
+  AsmWriteCr3 (PageTable);
+}

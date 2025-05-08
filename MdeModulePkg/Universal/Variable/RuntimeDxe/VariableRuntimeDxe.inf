@@ -10,6 +10,7 @@
 #  buffer overflow or integer overflow.
 #
 # Copyright (c) 2006 - 2019, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) Microsoft Corporation.
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 #
 ##
@@ -36,12 +37,19 @@
   Variable.c
   VariableDxe.c
   Variable.h
+  VariableNonVolatile.c
+  VariableNonVolatile.h
+  VariableParsing.c
+  VariableParsing.h
+  VariableRuntimeCache.c
+  VariableRuntimeCache.h
   PrivilegePolymorphic.h
   Measurement.c
   TcgMorLockDxe.c
   VarCheck.c
   VariableExLib.c
   SpeculationBarrierDxe.c
+  VariableLockRequestToLock.c
 
 [Packages]
   MdePkg/MdePkg.dec
@@ -63,6 +71,10 @@
   TpmMeasurementLib
   AuthVariableLib
   VarCheckLib
+  VariableFlashInfoLib
+  VariablePolicyLib
+  VariablePolicyHelperLib
+  SafeIntLib
 
 [Protocols]
   gEfiFirmwareVolumeBlockProtocolGuid           ## CONSUMES
@@ -72,6 +84,7 @@
   gEfiVariableWriteArchProtocolGuid             ## PRODUCES
   gEfiVariableArchProtocolGuid                  ## PRODUCES
   gEdkiiVariableLockProtocolGuid                ## PRODUCES
+  gEdkiiVariablePolicyProtocolGuid              ## PRODUCES
   gEdkiiVarCheckProtocolGuid                    ## PRODUCES
 
 [Guids]
@@ -112,11 +125,9 @@
   ## SOMETIMES_CONSUMES   ## Variable:L"dbx"
   ## SOMETIMES_CONSUMES   ## Variable:L"dbt"
   gEfiImageSecurityDatabaseGuid
+  gEfiDeviceSignatureDatabaseGuid
 
 [Pcd]
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableSize      ## CONSUMES
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableBase      ## SOMETIMES_CONSUMES
-  gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableBase64    ## CONSUMES
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxVariableSize                 ## CONSUMES
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxAuthVariableSize             ## CONSUMES
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxVolatileVariableSize         ## CONSUMES
@@ -128,6 +139,8 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdReclaimVariableSpaceAtEndOfDxe  ## CONSUMES
   gEfiMdeModulePkgTokenSpaceGuid.PcdEmuVariableNvModeEnable         ## SOMETIMES_CONSUMES
   gEfiMdeModulePkgTokenSpaceGuid.PcdEmuVariableNvStoreReserved      ## SOMETIMES_CONSUMES
+  gEfiMdeModulePkgTokenSpaceGuid.PcdTcgPfpMeasurementRevision       ## CONSUMES
+  gEfiMdeModulePkgTokenSpaceGuid.PcdEnableSpdmDeviceAuthentication   ## PRODUCES AND CONSUMES
 
 [FeaturePcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdVariableCollectStatistics  ## CONSUMES # statistic the information of variable.

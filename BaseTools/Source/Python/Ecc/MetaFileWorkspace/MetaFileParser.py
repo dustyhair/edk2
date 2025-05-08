@@ -1,7 +1,7 @@
 ## @file
 # This file is used to parse meta files
 #
-# Copyright (c) 2008 - 2018, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2008 - 2020, Intel Corporation. All rights reserved.<BR>
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 #
 
@@ -13,7 +13,7 @@ import Common.LongFilePathOs as os
 import re
 import time
 import copy
-
+from hashlib import md5
 import Common.EdkLogger as EdkLogger
 import Common.GlobalData as GlobalData
 import Ecc.EccGlobalData as EccGlobalData
@@ -30,6 +30,10 @@ from Ecc.MetaFileWorkspace.MetaFileTable import MetaFileStorage
 from GenFds.FdfParser import FdfParser
 from Common.LongFilePathSupport import OpenLongFilePath as open
 from Common.LongFilePathSupport import CodecOpenLongFilePath
+
+## RegEx for finding file versions
+hexVersionPattern = re.compile(r'0[xX][\da-f-A-F]{5,8}')
+decVersionPattern = re.compile(r'\d+\.\d+')
 
 ## A decorator used to parse macro definition
 def ParseMacro(Parser):
@@ -331,11 +335,19 @@ class MetaFileParser(object):
         Name, Value = self._ValueList[1], self._ValueList[2]
         # Sometimes, we need to make differences between EDK and EDK2 modules
         if Name == 'INF_VERSION':
-            try:
+            if hexVersionPattern.match(Value):
                 self._Version = int(Value, 0)
-            except:
+            elif decVersionPattern.match(Value):
+                ValueList = Value.split('.')
+                Major = int(ValueList[0], 0)
+                Minor = int(ValueList[1], 0)
+                if Major > 0xffff or Minor > 0xffff:
+                    EdkLogger.error('Parser', FORMAT_INVALID, "Invalid version number",
+                                    ExtraData=self._CurrentLine, File=self.MetaFile, Line=self._LineIndex + 1)
+                self._Version = int('0x{0:04x}{1:04x}'.format(Major, Minor), 0)
+            else:
                 EdkLogger.error('Parser', FORMAT_INVALID, "Invalid version number",
-                                ExtraData=self._CurrentLine, File=self.MetaFile, Line=self._LineIndex+1)
+                                ExtraData=self._CurrentLine, File=self.MetaFile, Line=self._LineIndex + 1)
         elif Name == 'MODULE_UNI_FILE':
             UniFile = os.path.join(os.path.dirname(self.MetaFile), Value)
             if os.path.exists(UniFile):
@@ -1498,6 +1510,10 @@ class DecParser(MetaFileParser):
         self.TblFile = EccGlobalData.gDb.TblFile
         self.FileID = -1
 
+        self._CurrentStructurePcdName = ""
+        self._include_flag = False
+        self._package_flag = False
+
     ## Parser starter
     def Start(self):
         Content = ''
@@ -1692,6 +1708,62 @@ class DecParser(MetaFileParser):
                             File=self.MetaFile, Line=self._LineIndex+1)
             self._ValueList[0] = ''
 
+    def ParsePcdName(self,namelist):
+        if "[" in namelist[1]:
+            pcdname = namelist[1][:namelist[1].index("[")]
+            arrayindex = namelist[1][namelist[1].index("["):]
+            namelist[1] = pcdname
+            if len(namelist) == 2:
+                namelist.append(arrayindex)
+            else:
+                namelist[2] = ".".join((arrayindex,namelist[2]))
+        return namelist
+
+    def StructPcdParser(self):
+        self._ValueList[0] = self._CurrentStructurePcdName
+
+        if "|" not in self._CurrentLine:
+            if "<HeaderFiles>" == self._CurrentLine:
+                self._include_flag = True
+                self._package_flag = False
+                self._ValueList = None
+                return
+            if "<Packages>" == self._CurrentLine:
+                self._package_flag = True
+                self._ValueList = None
+                self._include_flag = False
+                return
+
+            if self._include_flag:
+                self._ValueList[1] = "<HeaderFiles>_" + md5(self._CurrentLine.encode('utf-8')).hexdigest()
+                self._ValueList[2] = self._CurrentLine
+            if self._package_flag and "}" != self._CurrentLine:
+                self._ValueList[1] = "<Packages>_" + md5(self._CurrentLine.encode('utf-8')).hexdigest()
+                self._ValueList[2] = self._CurrentLine
+            if self._CurrentLine == "}":
+                self._package_flag = False
+                self._include_flag = False
+                self._ValueList = None
+        else:
+            PcdTockens = self._CurrentLine.split(TAB_VALUE_SPLIT)
+            PcdNames = self.ParsePcdName(PcdTockens[0].split(TAB_SPLIT))
+            if len(PcdNames) == 2:
+                if PcdNames[1].strip().endswith("]"):
+                    PcdName = PcdNames[1][:PcdNames[1].index('[')]
+                    Index = PcdNames[1][PcdNames[1].index('['):]
+                    self._ValueList[0] = TAB_SPLIT.join((PcdNames[0], PcdName))
+                    self._ValueList[1] = Index
+                    self._ValueList[2] = PcdTockens[1]
+                else:
+                    self._CurrentStructurePcdName = ""
+            else:
+                if self._CurrentStructurePcdName != TAB_SPLIT.join(PcdNames[:2]):
+                    EdkLogger.error('Parser', FORMAT_INVALID, "Pcd Name does not match: %s and %s " % (
+                    self._CurrentStructurePcdName, TAB_SPLIT.join(PcdNames[:2])),
+                                    File=self.MetaFile, Line=self._LineIndex + 1)
+                self._ValueList[1] = TAB_SPLIT.join(PcdNames[2:])
+                self._ValueList[2] = PcdTockens[1]
+
     ## PCD sections parser
     #
     #   [PcdsFixedAtBuild]
@@ -1702,6 +1774,9 @@ class DecParser(MetaFileParser):
     #
     @ParseMacro
     def _PcdParser(self):
+        if self._CurrentStructurePcdName:
+            self.StructPcdParser()
+            return
         TokenList = GetSplitValueList(self._CurrentLine, TAB_VALUE_SPLIT, 1)
         self._ValueList[0:1] = GetSplitValueList(TokenList[0], TAB_SPLIT)
         # check PCD information
@@ -1759,17 +1834,21 @@ class DecParser(MetaFileParser):
         if not IsValid:
             EdkLogger.error('Parser', FORMAT_INVALID, Cause, ExtraData=self._CurrentLine,
                             File=self.MetaFile, Line=self._LineIndex+1)
+        if Cause == "StructurePcd":
+            self._CurrentStructurePcdName = TAB_SPLIT.join(self._ValueList[0:2])
+            self._ValueList[0] = self._CurrentStructurePcdName
+            self._ValueList[1] = ValueList[1].strip()
 
         if EccGlobalData.gConfig.UniCheckPCDInfo == '1' or EccGlobalData.gConfig.UniCheckAll == '1' or EccGlobalData.gConfig.CheckAll == '1':
             # check Description, Prompt information
-            PatternDesc = re.compile('##\s*([\x21-\x7E\s]*)', re.S)
-            PatternPrompt = re.compile('#\s+@Prompt\s+([\x21-\x7E\s]*)', re.S)
+            PatternDesc = re.compile(r'##\s*([\x21-\x7E\s]*)', re.S)
+            PatternPrompt = re.compile(r'#\s+@Prompt\s+([\x21-\x7E\s]*)', re.S)
             Description = None
             Prompt = None
             # check @ValidRange, @ValidList and @Expression format valid
             ErrorCodeValid = '0x0 <= %s <= 0xFFFFFFFF'
-            PatternValidRangeIn = '(NOT)?\s*(\d+\s*-\s*\d+|0[xX][a-fA-F0-9]+\s*-\s*0[xX][a-fA-F0-9]+|LT\s*\d+|LT\s*0[xX][a-fA-F0-9]+|GT\s*\d+|GT\s*0[xX][a-fA-F0-9]+|LE\s*\d+|LE\s*0[xX][a-fA-F0-9]+|GE\s*\d+|GE\s*0[xX][a-fA-F0-9]+|XOR\s*\d+|XOR\s*0[xX][a-fA-F0-9]+|EQ\s*\d+|EQ\s*0[xX][a-fA-F0-9]+)'
-            PatternValidRng = re.compile('^' + '(NOT)?\s*' + PatternValidRangeIn + '$')
+            PatternValidRangeIn = r'(NOT)?\s*(\d+\s*-\s*\d+|0[xX][a-fA-F0-9]+\s*-\s*0[xX][a-fA-F0-9]+|LT\s*\d+|LT\s*0[xX][a-fA-F0-9]+|GT\s*\d+|GT\s*0[xX][a-fA-F0-9]+|LE\s*\d+|LE\s*0[xX][a-fA-F0-9]+|GE\s*\d+|GE\s*0[xX][a-fA-F0-9]+|XOR\s*\d+|XOR\s*0[xX][a-fA-F0-9]+|EQ\s*\d+|EQ\s*0[xX][a-fA-F0-9]+)'
+            PatternValidRng = re.compile('^' + r'(NOT)?\s*' + PatternValidRangeIn + '$')
             for Comment in self._Comments:
                 Comm = Comment[0].strip()
                 if not Comm:
@@ -1992,7 +2071,7 @@ class UniParser(object):
     def CheckKeyValid(self, Key, Contents=None):
         if not Contents:
             Contents = self.FileIn
-        KeyPattern = re.compile('#string\s+%s\s+.*?#language.*?".*?"' % Key, re.S)
+        KeyPattern = re.compile(r'#string\s+%s\s+.*?#language.*?".*?"' % Key, re.S)
         if KeyPattern.search(Contents):
             return True
         return False

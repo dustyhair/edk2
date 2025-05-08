@@ -34,27 +34,27 @@ Module Name:
 #include "Platform.h"
 #include "Cmos.h"
 
-UINT8 mPhysMemAddressWidth;
+UINT8  mPhysMemAddressWidth;
 
-STATIC UINT32 mS3AcpiReservedMemoryBase;
-STATIC UINT32 mS3AcpiReservedMemorySize;
+STATIC UINT32  mS3AcpiReservedMemoryBase;
+STATIC UINT32  mS3AcpiReservedMemorySize;
 
-STATIC UINT16 mQ35TsegMbytes;
+STATIC UINT16  mQ35TsegMbytes;
 
 VOID
 Q35TsegMbytesInitialization (
   VOID
   )
 {
-  UINT16        ExtendedTsegMbytes;
-  RETURN_STATUS PcdStatus;
+  UINT16         ExtendedTsegMbytes;
+  RETURN_STATUS  PcdStatus;
 
   if (mHostBridgeDevId != INTEL_Q35_MCH_DEVICE_ID) {
     DEBUG ((
       DEBUG_ERROR,
       "%a: no TSEG (SMRAM) on host bridge DID=0x%04x; "
       "only DID=0x%04x (Q35) is supported\n",
-      __FUNCTION__,
+      __func__,
       mHostBridgeDevId,
       INTEL_Q35_MCH_DEVICE_ID
       ));
@@ -88,7 +88,7 @@ Q35TsegMbytesInitialization (
   DEBUG ((
     DEBUG_INFO,
     "%a: QEMU offers an extended TSEG (%d MB)\n",
-    __FUNCTION__,
+    __func__,
     ExtendedTsegMbytes
     ));
   PcdStatus = PcdSet16S (PcdQ35TsegMbytes, ExtendedTsegMbytes);
@@ -99,16 +99,16 @@ Q35TsegMbytesInitialization (
 STATIC
 UINT64
 GetHighestSystemMemoryAddress (
-  BOOLEAN       Below4gb
+  BOOLEAN  Below4gb
   )
 {
-  EFI_E820_ENTRY64    *E820Map;
-  UINT32              E820EntriesCount;
-  EFI_E820_ENTRY64    *Entry;
-  EFI_STATUS          Status;
-  UINT32              Loop;
-  UINT64              HighestAddress;
-  UINT64              EntryEnd;
+  EFI_E820_ENTRY64  *E820Map;
+  UINT32            E820EntriesCount;
+  EFI_E820_ENTRY64  *Entry;
+  EFI_STATUS        Status;
+  UINT32            Loop;
+  UINT64            HighestAddress;
+  UINT64            EntryEnd;
 
   HighestAddress = 0;
 
@@ -116,12 +116,12 @@ GetHighestSystemMemoryAddress (
   ASSERT_EFI_ERROR (Status);
 
   for (Loop = 0; Loop < E820EntriesCount; Loop++) {
-    Entry = E820Map + Loop;
+    Entry    = E820Map + Loop;
     EntryEnd = Entry->BaseAddr + Entry->Length;
 
-    if (Entry->Type == EfiAcpiAddressRangeMemory &&
-        EntryEnd > HighestAddress) {
-
+    if ((Entry->Type == EfiAcpiAddressRangeMemory) &&
+        (EntryEnd > HighestAddress))
+    {
       if (Below4gb && (EntryEnd <= BASE_4GB)) {
         HighestAddress = EntryEnd;
       } else if (!Below4gb && (EntryEnd >= BASE_4GB)) {
@@ -141,8 +141,8 @@ GetSystemMemorySizeBelow4gb (
   VOID
   )
 {
-  UINT8 Cmos0x34;
-  UINT8 Cmos0x35;
+  UINT8  Cmos0x34;
+  UINT8  Cmos0x35;
 
   //
   // In PVH case, there is no CMOS, we have to calculate the memory size
@@ -154,7 +154,7 @@ GetSystemMemorySizeBelow4gb (
     HighestAddress = GetHighestSystemMemoryAddress (TRUE);
     ASSERT (HighestAddress > 0 && HighestAddress <= BASE_4GB);
 
-    return HighestAddress;
+    return (UINT32)HighestAddress;
   }
 
   //
@@ -166,180 +166,38 @@ GetSystemMemorySizeBelow4gb (
   //   into the calculation to get the total memory size.
   //
 
-  Cmos0x34 = (UINT8) CmosRead8 (0x34);
-  Cmos0x35 = (UINT8) CmosRead8 (0x35);
+  Cmos0x34 = (UINT8)CmosRead8 (0x34);
+  Cmos0x35 = (UINT8)CmosRead8 (0x35);
 
-  return (UINT32) (((UINTN)((Cmos0x35 << 8) + Cmos0x34) << 16) + SIZE_16MB);
+  return (UINT32)(((UINTN)((Cmos0x35 << 8) + Cmos0x34) << 16) + SIZE_16MB);
 }
-
-
-STATIC
-UINT64
-GetSystemMemorySizeAbove4gb (
-  )
-{
-  UINT32 Size;
-  UINTN  CmosIndex;
-
-  //
-  // In PVH case, there is no CMOS, we have to calculate the memory size
-  // from parsing the E820
-  //
-  if (XenPvhDetected ()) {
-    UINT64  HighestAddress;
-
-    HighestAddress = GetHighestSystemMemoryAddress (FALSE);
-    ASSERT (HighestAddress == 0 || HighestAddress >= BASE_4GB);
-
-    if (HighestAddress >= BASE_4GB) {
-      HighestAddress -= BASE_4GB;
-    }
-
-    return HighestAddress;
-  }
-
-  //
-  // CMOS 0x5b-0x5d specifies the system memory above 4GB MB.
-  // * CMOS(0x5d) is the most significant size byte
-  // * CMOS(0x5c) is the middle size byte
-  // * CMOS(0x5b) is the least significant size byte
-  // * The size is specified in 64kb chunks
-  //
-
-  Size = 0;
-  for (CmosIndex = 0x5d; CmosIndex >= 0x5b; CmosIndex--) {
-    Size = (UINT32) (Size << 8) + (UINT32) CmosRead8 (CmosIndex);
-  }
-
-  return LShiftU64 (Size, 16);
-}
-
 
 /**
-  Return the highest address that DXE could possibly use, plus one.
-**/
-STATIC
-UINT64
-GetFirstNonAddress (
-  VOID
-  )
-{
-  UINT64               FirstNonAddress;
-  UINT64               Pci64Base, Pci64Size;
-  RETURN_STATUS        PcdStatus;
-
-  FirstNonAddress = BASE_4GB + GetSystemMemorySizeAbove4gb ();
-
-  //
-  // If DXE is 32-bit, then we're done; PciBusDxe will degrade 64-bit MMIO
-  // resources to 32-bit anyway. See DegradeResource() in
-  // "PciResourceSupport.c".
-  //
-#ifdef MDE_CPU_IA32
-  if (!FeaturePcdGet (PcdDxeIplSwitchToLongMode)) {
-    return FirstNonAddress;
-  }
-#endif
-
-  //
-  // Otherwise, in order to calculate the highest address plus one, we must
-  // consider the 64-bit PCI host aperture too. Fetch the default size.
-  //
-  Pci64Size = PcdGet64 (PcdPciMmio64Size);
-
-  if (Pci64Size == 0) {
-    if (mBootMode != BOOT_ON_S3_RESUME) {
-      DEBUG ((DEBUG_INFO, "%a: disabling 64-bit PCI host aperture\n",
-        __FUNCTION__));
-      PcdStatus = PcdSet64S (PcdPciMmio64Size, 0);
-      ASSERT_RETURN_ERROR (PcdStatus);
-    }
-
-    //
-    // There's nothing more to do; the amount of memory above 4GB fully
-    // determines the highest address plus one. The memory hotplug area (see
-    // below) plays no role for the firmware in this case.
-    //
-    return FirstNonAddress;
-  }
-
-  //
-  // SeaBIOS aligns both boundaries of the 64-bit PCI host aperture to 1GB, so
-  // that the host can map it with 1GB hugepages. Follow suit.
-  //
-  Pci64Base = ALIGN_VALUE (FirstNonAddress, (UINT64)SIZE_1GB);
-  Pci64Size = ALIGN_VALUE (Pci64Size, (UINT64)SIZE_1GB);
-
-  //
-  // The 64-bit PCI host aperture should also be "naturally" aligned. The
-  // alignment is determined by rounding the size of the aperture down to the
-  // next smaller or equal power of two. That is, align the aperture by the
-  // largest BAR size that can fit into it.
-  //
-  Pci64Base = ALIGN_VALUE (Pci64Base, GetPowerOfTwo64 (Pci64Size));
-
-  if (mBootMode != BOOT_ON_S3_RESUME) {
-    //
-    // The core PciHostBridgeDxe driver will automatically add this range to
-    // the GCD memory space map through our PciHostBridgeLib instance; here we
-    // only need to set the PCDs.
-    //
-    PcdStatus = PcdSet64S (PcdPciMmio64Base, Pci64Base);
-    ASSERT_RETURN_ERROR (PcdStatus);
-    PcdStatus = PcdSet64S (PcdPciMmio64Size, Pci64Size);
-    ASSERT_RETURN_ERROR (PcdStatus);
-
-    DEBUG ((DEBUG_INFO, "%a: Pci64Base=0x%Lx Pci64Size=0x%Lx\n",
-      __FUNCTION__, Pci64Base, Pci64Size));
-  }
-
-  //
-  // The useful address space ends with the 64-bit PCI host aperture.
-  //
-  FirstNonAddress = Pci64Base + Pci64Size;
-  return FirstNonAddress;
-}
-
-
-/**
-  Initialize the mPhysMemAddressWidth variable, based on guest RAM size.
+  Initialize the mPhysMemAddressWidth variable, based on CPUID data.
 **/
 VOID
 AddressWidthInitialization (
   VOID
   )
 {
-  UINT64 FirstNonAddress;
+  UINT32  RegEax;
 
-  //
-  // As guest-physical memory size grows, the permanent PEI RAM requirements
-  // are dominated by the identity-mapping page tables built by the DXE IPL.
-  // The DXL IPL keys off of the physical address bits advertized in the CPU
-  // HOB. To conserve memory, we calculate the minimum address width here.
-  //
-  FirstNonAddress      = GetFirstNonAddress ();
-  mPhysMemAddressWidth = (UINT8)HighBitSet64 (FirstNonAddress);
-
-  //
-  // If FirstNonAddress is not an integral power of two, then we need an
-  // additional bit.
-  //
-  if ((FirstNonAddress & (FirstNonAddress - 1)) != 0) {
-    ++mPhysMemAddressWidth;
-  }
-
-  //
-  // The minimum address width is 36 (covers up to and excluding 64 GB, which
-  // is the maximum for Ia32 + PAE). The theoretical architecture maximum for
-  // X64 long mode is 52 bits, but the DXE IPL clamps that down to 48 bits. We
-  // can simply assert that here, since 48 bits are good enough for 256 TB.
-  //
-  if (mPhysMemAddressWidth <= 36) {
+  AsmCpuid (0x80000000, &RegEax, NULL, NULL, NULL);
+  if (RegEax >= 0x80000008) {
+    AsmCpuid (0x80000008, &RegEax, NULL, NULL, NULL);
+    mPhysMemAddressWidth = (UINT8)RegEax;
+  } else {
     mPhysMemAddressWidth = 36;
   }
-  ASSERT (mPhysMemAddressWidth <= 48);
-}
 
+  //
+  // IA-32e paging translates 48-bit linear addresses to 52-bit physical addresses.
+  //
+  ASSERT (mPhysMemAddressWidth <= 52);
+  if (mPhysMemAddressWidth > 48) {
+    mPhysMemAddressWidth = 48;
+  }
+}
 
 /**
   Calculate the cap for the permanent PEI memory.
@@ -350,21 +208,22 @@ GetPeiMemoryCap (
   VOID
   )
 {
-  BOOLEAN Page1GSupport;
-  UINT32  RegEax;
-  UINT32  RegEdx;
-  UINT32  Pml4Entries;
-  UINT32  PdpEntries;
-  UINTN   TotalPages;
+  BOOLEAN  Page1GSupport;
+  UINT32   RegEax;
+  UINT32   RegEdx;
+  UINT32   Pml4Entries;
+  UINT32   PdpEntries;
+  UINTN    TotalPages;
 
   //
   // If DXE is 32-bit, then just return the traditional 64 MB cap.
   //
-#ifdef MDE_CPU_IA32
+ #ifdef MDE_CPU_IA32
   if (!FeaturePcdGet (PcdDxeIplSwitchToLongMode)) {
     return SIZE_64MB;
   }
-#endif
+
+ #endif
 
   //
   // Dependent on physical address width, PEI memory allocations can be
@@ -385,7 +244,7 @@ GetPeiMemoryCap (
 
   if (mPhysMemAddressWidth <= 39) {
     Pml4Entries = 1;
-    PdpEntries = 1 << (mPhysMemAddressWidth - 30);
+    PdpEntries  = 1 << (mPhysMemAddressWidth - 30);
     ASSERT (PdpEntries <= 0x200);
   } else {
     Pml4Entries = 1 << (mPhysMemAddressWidth - 39);
@@ -394,7 +253,7 @@ GetPeiMemoryCap (
   }
 
   TotalPages = Page1GSupport ? Pml4Entries + 1 :
-                               (PdpEntries + 1) * Pml4Entries + 1;
+               (PdpEntries + 1) * Pml4Entries + 1;
   ASSERT (TotalPages <= 0x40201);
 
   //
@@ -404,7 +263,6 @@ GetPeiMemoryCap (
   //
   return (UINT32)(EFI_PAGES_TO_SIZE (TotalPages) + SIZE_64MB);
 }
-
 
 /**
   Publish PEI core memory
@@ -417,11 +275,11 @@ PublishPeiMemory (
   VOID
   )
 {
-  EFI_STATUS                  Status;
-  EFI_PHYSICAL_ADDRESS        MemoryBase;
-  UINT64                      MemorySize;
-  UINT32                      LowerMemorySize;
-  UINT32                      PeiMemoryCap;
+  EFI_STATUS            Status;
+  EFI_PHYSICAL_ADDRESS  MemoryBase;
+  UINT64                MemorySize;
+  UINT32                LowerMemorySize;
+  UINT32                PeiMemoryCap;
 
   LowerMemorySize = GetSystemMemorySizeBelow4gb ();
 
@@ -430,8 +288,13 @@ PublishPeiMemory (
     MemorySize = mS3AcpiReservedMemorySize;
   } else {
     PeiMemoryCap = GetPeiMemoryCap ();
-    DEBUG ((DEBUG_INFO, "%a: mPhysMemAddressWidth=%d PeiMemoryCap=%u KB\n",
-      __FUNCTION__, mPhysMemAddressWidth, PeiMemoryCap >> 10));
+    DEBUG ((
+      DEBUG_INFO,
+      "%a: mPhysMemAddressWidth=%d PeiMemoryCap=%u KB\n",
+      __func__,
+      mPhysMemAddressWidth,
+      PeiMemoryCap >> 10
+      ));
 
     //
     // Determine the range of memory to use during PEI
@@ -448,12 +311,11 @@ PublishPeiMemory (
   //
   // Publish this memory to the PEI Core
   //
-  Status = PublishSystemMemory(MemoryBase, MemorySize);
+  Status = PublishSystemMemory (MemoryBase, MemorySize);
   ASSERT_EFI_ERROR (Status);
 
   return Status;
 }
-
 
 /**
   Publish system RAM and reserve memory regions
@@ -478,12 +340,12 @@ InitializeRamRegions (
     // such that they would overlap the LockBox storage.
     //
     ZeroMem (
-      (VOID*)(UINTN) PcdGet32 (PcdOvmfLockBoxStorageBase),
-      (UINTN) PcdGet32 (PcdOvmfLockBoxStorageSize)
+      (VOID *)(UINTN)PcdGet32 (PcdOvmfLockBoxStorageBase),
+      (UINTN)PcdGet32 (PcdOvmfLockBoxStorageSize)
       );
     BuildMemoryAllocationHob (
-      (EFI_PHYSICAL_ADDRESS)(UINTN) PcdGet32 (PcdOvmfLockBoxStorageBase),
-      (UINT64)(UINTN) PcdGet32 (PcdOvmfLockBoxStorageSize),
+      (EFI_PHYSICAL_ADDRESS)(UINTN)PcdGet32 (PcdOvmfLockBoxStorageBase),
+      (UINT64)(UINTN)PcdGet32 (PcdOvmfLockBoxStorageSize),
       EfiBootServicesData
       );
   }

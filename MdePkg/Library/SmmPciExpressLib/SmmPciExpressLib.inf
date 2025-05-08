@@ -32,6 +32,8 @@
  PcdLib
  DebugLib
  IoLib
+ UefiBootServicesTableLib
 
 [Pcd]
  gEfiMdePkgTokenSpaceGuid.PcdPciExpressBaseAddress ## CONSUMES
+ gEfiMdePkgTokenSpaceGuid.PcdPciExpressBaseSize  ## CONSUMES

@@ -26,8 +26,8 @@
 EFI_STATUS
 EFIAPI
 EmmcReset (
-  IN  EFI_BLOCK_IO_PROTOCOL   *This,
-  IN  BOOLEAN                 ExtendedVerification
+  IN  EFI_BLOCK_IO_PROTOCOL  *This,
+  IN  BOOLEAN                ExtendedVerification
   );
 
 /**
@@ -43,7 +43,7 @@ EmmcReset (
   @retval EFI_SUCCESS           The data was read correctly from the device.
   @retval EFI_DEVICE_ERROR      The device reported an error while performing the read.
   @retval EFI_NO_MEDIA          There is no media in the device.
-  @retval EFI_MEDIA_CHANGED     The MediaId does not matched the current device.
+  @retval EFI_MEDIA_CHANGED     The MediaId does not match the current device.
   @retval EFI_BAD_BUFFER_SIZE   The Buffer was not a multiple of the block size of the device.
   @retval EFI_INVALID_PARAMETER The read request contains LBAs that are not valid,
                                 or the buffer is not on proper alignment.
@@ -56,7 +56,7 @@ EmmcReadBlocks (
   IN     UINT32                 MediaId,
   IN     EFI_LBA                Lba,
   IN     UINTN                  BufferSize,
-     OUT VOID                   *Buffer
+  OUT VOID                      *Buffer
   );
 
 /**
@@ -73,7 +73,7 @@ EmmcReadBlocks (
   @retval EFI_WRITE_PROTECTED   The device can not be written to.
   @retval EFI_DEVICE_ERROR      The device reported an error while performing the write.
   @retval EFI_NO_MEDIA          There is no media in the device.
-  @retval EFI_MEDIA_CHNAGED     The MediaId does not matched the current device.
+  @retval EFI_MEDIA_CHANGED     The MediaId does not match the current device.
   @retval EFI_BAD_BUFFER_SIZE   The Buffer was not a multiple of the block size of the device.
   @retval EFI_INVALID_PARAMETER The write request contains LBAs that are not valid,
                                 or the buffer is not on proper alignment.
@@ -82,11 +82,11 @@ EmmcReadBlocks (
 EFI_STATUS
 EFIAPI
 EmmcWriteBlocks (
-  IN  EFI_BLOCK_IO_PROTOCOL   *This,
-  IN  UINT32                  MediaId,
-  IN  EFI_LBA                 Lba,
-  IN  UINTN                   BufferSize,
-  IN  VOID                    *Buffer
+  IN  EFI_BLOCK_IO_PROTOCOL  *This,
+  IN  UINT32                 MediaId,
+  IN  EFI_LBA                Lba,
+  IN  UINTN                  BufferSize,
+  IN  VOID                   *Buffer
   );
 
 /**
@@ -102,7 +102,7 @@ EmmcWriteBlocks (
 EFI_STATUS
 EFIAPI
 EmmcFlushBlocks (
-  IN  EFI_BLOCK_IO_PROTOCOL   *This
+  IN  EFI_BLOCK_IO_PROTOCOL  *This
   );
 
 /**
@@ -152,12 +152,12 @@ EmmcResetEx (
 EFI_STATUS
 EFIAPI
 EmmcReadBlocksEx (
-  IN     EFI_BLOCK_IO2_PROTOCOL *This,
-  IN     UINT32                 MediaId,
-  IN     EFI_LBA                Lba,
-  IN OUT EFI_BLOCK_IO2_TOKEN    *Token,
-  IN     UINTN                  BufferSize,
-     OUT VOID                   *Buffer
+  IN     EFI_BLOCK_IO2_PROTOCOL  *This,
+  IN     UINT32                  MediaId,
+  IN     EFI_LBA                 Lba,
+  IN OUT EFI_BLOCK_IO2_TOKEN     *Token,
+  IN     UINTN                   BufferSize,
+  OUT VOID                       *Buffer
   );
 
 /**
@@ -176,7 +176,7 @@ EmmcReadBlocksEx (
   @retval EFI_WRITE_PROTECTED   The device can not be written to.
   @retval EFI_DEVICE_ERROR      The device reported an error while performing the write.
   @retval EFI_NO_MEDIA          There is no media in the device.
-  @retval EFI_MEDIA_CHNAGED     The MediaId does not matched the current device.
+  @retval EFI_MEDIA_CHANGED     The MediaId does not match the current device.
   @retval EFI_BAD_BUFFER_SIZE   The Buffer was not a multiple of the block size of the device.
   @retval EFI_INVALID_PARAMETER The write request contains LBAs that are not valid,
                                 or the buffer is not on proper alignment.
@@ -185,12 +185,12 @@ EmmcReadBlocksEx (
 EFI_STATUS
 EFIAPI
 EmmcWriteBlocksEx (
-  IN     EFI_BLOCK_IO2_PROTOCOL *This,
-  IN     UINT32                 MediaId,
-  IN     EFI_LBA                Lba,
-  IN OUT EFI_BLOCK_IO2_TOKEN    *Token,
-  IN     UINTN                  BufferSize,
-  IN     VOID                   *Buffer
+  IN     EFI_BLOCK_IO2_PROTOCOL  *This,
+  IN     UINT32                  MediaId,
+  IN     EFI_LBA                 Lba,
+  IN OUT EFI_BLOCK_IO2_TOKEN     *Token,
+  IN     UINTN                   BufferSize,
+  IN     VOID                    *Buffer
   );
 
 /**
@@ -250,7 +250,9 @@ EmmcFlushBlocksEx (
   function shall return EFI_DEVICE_ERROR.
 
   @param[in]  This                         Indicates a pointer to the calling context.
-  @param[in]  MediaId                      ID of the medium to receive data from.
+  @param[in]  MediaId                      ID of the medium to receive data from. If there is no
+                                           block IO protocol supported by the physical device, the
+                                           value of MediaId is undefined.
   @param[in]  Timeout                      The timeout, in 100ns units, to use for the execution
                                            of the security protocol command. A Timeout value of 0
                                            means that this function will wait indefinitely for the
@@ -287,15 +289,15 @@ EmmcFlushBlocksEx (
 EFI_STATUS
 EFIAPI
 EmmcSecurityProtocolInOut (
-  IN     EFI_STORAGE_SECURITY_COMMAND_PROTOCOL    *This,
-  IN     UINT32                                   MediaId,
-  IN     UINT64                                   Timeout,
-  IN     UINT8                                    SecurityProtocolId,
-  IN     UINT16                                   SecurityProtocolSpecificData,
-  IN     UINTN                                    PayloadBufferSize,
-     OUT VOID                                     *PayloadBuffer,
-     OUT UINTN                                    *PayloadTransferSize,
-  IN     BOOLEAN                                  IsRead
+  IN     EFI_STORAGE_SECURITY_COMMAND_PROTOCOL  *This,
+  IN     UINT32                                 MediaId,
+  IN     UINT64                                 Timeout,
+  IN     UINT8                                  SecurityProtocolId,
+  IN     UINT16                                 SecurityProtocolSpecificData,
+  IN     UINTN                                  PayloadBufferSize,
+  OUT VOID                                      *PayloadBuffer,
+  OUT UINTN                                     *PayloadTransferSize,
+  IN     BOOLEAN                                IsRead
   );
 
 /**
@@ -337,7 +339,9 @@ EmmcSecurityProtocolInOut (
   function shall return EFI_DEVICE_ERROR.
 
   @param  This                         Indicates a pointer to the calling context.
-  @param  MediaId                      ID of the medium to receive data from.
+  @param  MediaId                      ID of the medium to receive data from. If there is no
+                                       block IO protocol supported by the physical device, the
+                                       value of MediaId is undefined.
   @param  Timeout                      The timeout, in 100ns units, to use for the execution
                                        of the security protocol command. A Timeout value of 0
                                        means that this function will wait indefinitely for the
@@ -373,14 +377,14 @@ EmmcSecurityProtocolInOut (
 EFI_STATUS
 EFIAPI
 EmmcSecurityProtocolIn (
-  IN EFI_STORAGE_SECURITY_COMMAND_PROTOCOL    *This,
-  IN UINT32                                   MediaId,
-  IN UINT64                                   Timeout,
-  IN UINT8                                    SecurityProtocolId,
-  IN UINT16                                   SecurityProtocolSpecificData,
-  IN UINTN                                    PayloadBufferSize,
-  OUT VOID                                    *PayloadBuffer,
-  OUT UINTN                                   *PayloadTransferSize
+  IN EFI_STORAGE_SECURITY_COMMAND_PROTOCOL  *This,
+  IN UINT32                                 MediaId,
+  IN UINT64                                 Timeout,
+  IN UINT8                                  SecurityProtocolId,
+  IN UINT16                                 SecurityProtocolSpecificData,
+  IN UINTN                                  PayloadBufferSize,
+  OUT VOID                                  *PayloadBuffer,
+  OUT UINTN                                 *PayloadTransferSize
   );
 
 /**
@@ -417,7 +421,9 @@ EmmcSecurityProtocolIn (
   shall return EFI_DEVICE_ERROR.
 
   @param  This                         Indicates a pointer to the calling context.
-  @param  MediaId                      ID of the medium to receive data from.
+  @param  MediaId                      ID of the medium to receive data from. If there is no
+                                       block IO protocol supported by the physical device, the
+                                       value of MediaId is undefined.
   @param  Timeout                      The timeout, in 100ns units, to use for the execution
                                        of the security protocol command. A Timeout value of 0
                                        means that this function will wait indefinitely for the
@@ -447,13 +453,13 @@ EmmcSecurityProtocolIn (
 EFI_STATUS
 EFIAPI
 EmmcSecurityProtocolOut (
-  IN EFI_STORAGE_SECURITY_COMMAND_PROTOCOL    *This,
-  IN UINT32                                   MediaId,
-  IN UINT64                                   Timeout,
-  IN UINT8                                    SecurityProtocolId,
-  IN UINT16                                   SecurityProtocolSpecificData,
-  IN UINTN                                    PayloadBufferSize,
-  IN VOID                                     *PayloadBuffer
+  IN EFI_STORAGE_SECURITY_COMMAND_PROTOCOL  *This,
+  IN UINT32                                 MediaId,
+  IN UINT64                                 Timeout,
+  IN UINT8                                  SecurityProtocolId,
+  IN UINT16                                 SecurityProtocolSpecificData,
+  IN UINTN                                  PayloadBufferSize,
+  IN VOID                                   *PayloadBuffer
   );
 
 /**
@@ -486,12 +492,11 @@ EmmcSecurityProtocolOut (
 EFI_STATUS
 EFIAPI
 EmmcEraseBlocks (
-  IN     EFI_ERASE_BLOCK_PROTOCOL      *This,
-  IN     UINT32                        MediaId,
-  IN     EFI_LBA                       Lba,
-  IN OUT EFI_ERASE_BLOCK_TOKEN         *Token,
-  IN     UINTN                         Size
+  IN     EFI_ERASE_BLOCK_PROTOCOL  *This,
+  IN     UINT32                    MediaId,
+  IN     EFI_LBA                   Lba,
+  IN OUT EFI_ERASE_BLOCK_TOKEN     *Token,
+  IN     UINTN                     Size
   );
 
 #endif
-
